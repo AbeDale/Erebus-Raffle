@@ -411,6 +411,81 @@
       }
     }
 
+    /* ------- TRIPLE HOLDER LEADERBOARD ------- */
+    .triple-board {
+      margin-top: 22px;
+      padding: 14px 14px 10px;
+      border-radius: 18px;
+      border: 1px solid rgba(170, 135, 255, 0.9);
+      background: radial-gradient(circle at top, #140622, #050009);
+      box-shadow:
+        0 22px 70px rgba(0, 0, 0, 0.95),
+        0 0 22px rgba(150, 115, 255, 0.8);
+      font-size: 0.76rem;
+    }
+
+    .triple-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+
+    .triple-header h2 {
+      font-size: 0.9rem;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+    }
+
+    .triple-sub {
+      font-size: 0.7rem;
+      opacity: 0.78;
+      margin-bottom: 6px;
+    }
+
+    .triple-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 2px;
+    }
+
+    .triple-table th,
+    .triple-table td {
+      padding: 4px 4px;
+      text-align: left;
+    }
+
+    .triple-table th {
+      font-size: 0.7rem;
+      opacity: 0.8;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    .triple-table td {
+      font-size: 0.72rem;
+      opacity: 0.92;
+    }
+
+    .triple-table tr:nth-child(odd) td {
+      background: rgba(13, 4, 40, 0.6);
+    }
+
+    .triple-table tr:nth-child(even) td {
+      background: rgba(7, 2, 24, 0.85);
+    }
+
+    .addr {
+      font-family: "SF Mono", ui-monospace, Menlo, Monaco, Consolas,
+        "Liberation Mono", "Courier New", monospace;
+      font-size: 0.68rem;
+    }
+
+    .rank-medal {
+      font-size: 0.75rem;
+    }
+
     .winners-panel {
       margin-top: 24px;
       padding: 14px 14px 10px;
@@ -650,12 +725,38 @@
       </div>
 
       <!-- ART CARD -->
-      <div class="art-card">
+      <div class="card-glass art-card">
         <div class="art-card-inner">
           <div class="art-glow"></div>
           <img src="./erebus-creature.png" alt="Erebus creature" />
         </div>
       </div>
+    </div>
+
+    <!-- TRIPLE HOLDER LEADERBOARD -->
+    <div class="triple-board">
+      <div class="triple-header">
+        <h2>TRIPLE SHADOW HOLDERS</h2>
+        <span class="note" style="font-size:0.7rem; opacity:0.8;">
+          Live snapshot of wallets holding all three Erebus collections.
+        </span>
+      </div>
+      <div class="triple-sub">
+        Top wallets ranked by total count of <strong>ID Pass + Shadows + Token</strong>.
+      </div>
+
+      <table class="triple-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Address</th>
+            <th>Total</th>
+          </tr>
+        </thead>
+        <tbody id="tripleBody">
+          <tr><td colspan="3">Waiting for first scan…</td></tr>
+        </tbody>
+      </table>
     </div>
 
     <!-- WINNERS PANEL -->
@@ -686,7 +787,6 @@
      ************************************************************/
     const MONAD_RPC = "https://testnet-rpc.monad.xyz";
 
-    // ERC-721 minimal ABI for ownerOf
     const ERC721_ABI = [
       "function ownerOf(uint256 tokenId) view returns (address)"
     ];
@@ -787,6 +887,47 @@
       holderMaps[col.key] = map;
     }
 
+    function computeTripleHolders(limit = 50) {
+      const triples = [];
+      const tokenMap = holderMaps.token;
+
+      for (const [addr, tokenCount] of tokenMap.entries()) {
+        const idCount = holderMaps.idpass.get(addr) || 0;
+        const shadowCount = holderMaps.shadows.get(addr) || 0;
+
+        if (idCount > 0 && shadowCount > 0 && tokenCount > 0) {
+          const total = idCount + shadowCount + tokenCount;
+          triples.push({ addr, total });
+        }
+      }
+
+      triples.sort((a, b) => b.total - a.total);
+      return triples.slice(0, limit);
+    }
+
+    function renderTripleBoard() {
+      const tbody = document.getElementById("tripleBody");
+      if (!tbody) return;
+
+      const rows = computeTripleHolders(50);
+
+      if (!rows.length) {
+        tbody.innerHTML = `<tr><td colspan="3">No wallets currently holding all three collections.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = rows.map((row, idx) => {
+        const icon = formatRankIcon(idx + 1);
+        return `
+          <tr>
+            <td class="rank-medal">${icon}</td>
+            <td class="addr">${shorten(row.addr)}</td>
+            <td>${row.total}</td>
+          </tr>
+        `;
+      }).join("");
+    }
+
     async function refreshAllHolders() {
       if (scanning) return;
       scanning = true;
@@ -796,6 +937,7 @@
         for (const col of COLLECTIONS) {
           await scanCollection(col);
         }
+        renderTripleBoard();
         setText("holderStatus", "Holder index: fresh snapshot loaded. Next refresh in ~5 minutes.");
       } catch (err) {
         console.error("Error scanning holders", err);
