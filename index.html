@@ -414,75 +414,6 @@
       100% { transform: translateY(-9px) scale(1.03) rotate(0.3deg); }
     }
 
-    /* ---------------- TRIPLE HOLDERS BOARD ---------------- */
-    .triple-card {
-      margin-top: 28px;
-      border-radius: 22px;
-      padding: 16px 14px 12px;
-      background: radial-gradient(circle at top, #150624, #050009);
-      border: 1px solid rgba(171, 133, 255, 0.9);
-      box-shadow:
-        0 24px 70px rgba(0, 0, 0, 0.9),
-        0 0 30px rgba(125, 96, 255, 0.9);
-      font-size: 0.76rem;
-      overflow: hidden;
-    }
-
-    .triple-card h3 {
-      font-size: 0.9rem;
-      text-transform: uppercase;
-      letter-spacing: 0.18em;
-      margin-bottom: 4px;
-    }
-
-    .triple-sub {
-      font-size: 0.7rem;
-      opacity: 0.75;
-      margin-bottom: 6px;
-    }
-
-    .triple-table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 6px;
-    }
-
-    .triple-table th,
-    .triple-table td {
-      padding: 4px 4px;
-      text-align: left;
-    }
-
-    .triple-table th {
-      font-size: 0.7rem;
-      opacity: 0.8;
-      text-transform: uppercase;
-      letter-spacing: 0.12em;
-    }
-
-    .triple-table td {
-      font-size: 0.73rem;
-      opacity: 0.94;
-    }
-
-    .triple-table tr:nth-child(odd) td {
-      background: rgba(16, 5, 48, 0.85);
-    }
-
-    .triple-table tr:nth-child(even) td {
-      background: rgba(8, 3, 28, 0.95);
-    }
-
-    .addr {
-      font-family: "SF Mono", ui-monospace, Menlo, Monaco, Consolas,
-        "Liberation Mono", "Courier New", monospace;
-      font-size: 0.68rem;
-    }
-
-    .rank-medal {
-      font-size: 0.75rem;
-    }
-
     /* ---------------- WINNERS PANEL ---------------- */
     .winners-panel {
       margin-top: 24px;
@@ -663,7 +594,7 @@
         </div>
 
         <div class="draw-status" id="drawStatus">
-          Timer is synced to the global Erebus schedule. Refreshing the page will not reset it.
+          Timer is stored on your device. Refreshing the page will not reset it.
         </div>
         <div class="timer-note">
           Draws are simulated client-side for now. Once wired to an on-chain raffle contract, this panel becomes the
@@ -735,27 +666,6 @@
       </div>
     </div>
 
-    <!-- TRIPLE HOLDERS (SMALL LEADERBOARD) -->
-    <div class="triple-card">
-      <h3>TRIPLE SHADOW HOLDERS</h3>
-      <div class="triple-sub">
-        Top wallets ranked by total count of <strong>ID Pass + Shadows + Token</strong>.<br />
-        Live snapshot of wallets holding all three Erebus collections.
-      </div>
-      <table class="triple-table">
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Address</th>
-            <th>Total</th>
-          </tr>
-        </thead>
-        <tbody id="triple-body">
-          <tr><td colspan="3">Waiting for first scan...</td></tr>
-        </tbody>
-      </table>
-    </div>
-
     <!-- WINNERS PANEL -->
     <div class="winners-panel">
       <div class="winners-header">
@@ -789,13 +699,13 @@
       "function ownerOf(uint256 tokenId) view returns (address)"
     ];
 
-    // Collection config
+    // Collections
     const COLLECTIONS = [
       {
         key: "idpass",
         name: "Erebus: ID Pass",
         address: "0x86942cf234ba763b3c95cae7f63dcf17abc56add",
-        maxTokenId: 499 // adjust if needed
+        maxTokenId: 499
       },
       {
         key: "shadows",
@@ -811,23 +721,10 @@
       }
     ];
 
-    // ---------------- TIMER SETUP ----------------
-    const DRAW_INTERVAL_MS = 12 * 60 * 60 * 1000; // 12 hours
-
-    // 👉 Set the time of the VERY FIRST draw (UTC).
-    // Example below: 14 Nov 2025, 18:00:00 UTC
-    const FIRST_DRAW_EPOCH = Date.parse("2025-11-14T18:00:00Z");
-
-    function getNextDrawTimestamp() {
-      const now = Date.now();
-      if (now <= FIRST_DRAW_EPOCH) return FIRST_DRAW_EPOCH;
-
-      const elapsed = now - FIRST_DRAW_EPOCH;
-      const intervalsPassed = Math.floor(elapsed / DRAW_INTERVAL_MS);
-      return FIRST_DRAW_EPOCH + (intervalsPassed + 1) * DRAW_INTERVAL_MS;
-    }
-
-    let nextDrawTimestamp = getNextDrawTimestamp();
+    // TIMER CONFIG
+    const INITIAL_OFFSET_MS = 2 * 60 * 60 * 1000;   // 2 hours until FIRST draw
+    const DRAW_INTERVAL_MS  = 12 * 60 * 60 * 1000;  // 12 hours between draws
+    const STORAGE_KEY       = "erebusNextDrawEpoch";
 
     /************************************************************
      * STATE
@@ -841,9 +738,11 @@
       token: new Map()
     };
 
+    let nextDrawTimestamp = 0;
     let countdownInterval = null;
     let refreshInterval = null;
     let scanning = false;
+    let drawInProgress = false;
 
     /************************************************************
      * UTILITIES
@@ -880,6 +779,19 @@
       return Math.floor(Math.random() * maxExclusive);
     }
 
+    function loadNextDrawTimestamp() {
+      const now = Date.now();
+      const stored = Number(localStorage.getItem(STORAGE_KEY));
+
+      // First time or value in the past → start with 2 hours from now
+      if (!stored || isNaN(stored) || stored <= now) {
+        const first = now + INITIAL_OFFSET_MS;
+        localStorage.setItem(STORAGE_KEY, String(first));
+        return first;
+      }
+      return stored;
+    }
+
     /************************************************************
      * HOLDER SCANNING
      ************************************************************/
@@ -901,47 +813,6 @@
       holderMaps[col.key] = map;
     }
 
-    function recomputeTripleLeaderboard() {
-      const idMap = holderMaps.idpass;
-      const shadowMap = holderMaps.shadows;
-      const tokenMap = holderMaps.token;
-
-      const combined = new Map();
-
-      // Only include addresses that hold ALL THREE (id + shadow + token)
-      for (const addr of tokenMap.keys()) {
-        const t = tokenMap.get(addr) || 0;
-        const i = idMap.get(addr) || 0;
-        const s = shadowMap.get(addr) || 0;
-        if (t > 0 && i > 0 && s > 0) {
-          combined.set(addr, t + i + s);
-        }
-      }
-
-      const entries = Array.from(combined.entries());
-      entries.sort((a, b) => b[1] - a[1]);
-      const top = entries.slice(0, 50); // top 50 (or less)
-
-      const tbody = document.getElementById("triple-body");
-      if (!tbody) return;
-
-      if (!top.length) {
-        tbody.innerHTML = `<tr><td colspan="3">No triple holders detected yet.</td></tr>`;
-        return;
-      }
-
-      tbody.innerHTML = top.map(([addr, total], idx) => {
-        const icon = formatRankIcon(idx + 1);
-        return `
-          <tr>
-            <td class="rank-medal">${icon}</td>
-            <td class="addr">${shorten(addr)}</td>
-            <td>${total}</td>
-          </tr>
-        `;
-      }).join("");
-    }
-
     async function refreshAllHolders() {
       if (scanning) return;
       scanning = true;
@@ -951,7 +822,6 @@
         for (const col of COLLECTIONS) {
           await scanCollection(col);
         }
-        recomputeTripleLeaderboard();
         setText("holderStatus", "Holder index: fresh snapshot loaded. Next refresh in ~5 minutes.");
       } catch (err) {
         console.error("Error scanning holders", err);
@@ -965,7 +835,6 @@
      * DRAW LOGIC
      ************************************************************/
     function pickWinners() {
-      // eligible = must hold at least one Erebus: Token
       const tokenMap = holderMaps.token;
       const eligibleAddrs = Array.from(tokenMap.keys());
       if (eligibleAddrs.length === 0) {
@@ -982,7 +851,6 @@
         winners.push(addr);
       }
 
-      // Build winner cards
       const idMap = holderMaps.idpass;
       const shadowMap = holderMaps.shadows;
 
@@ -990,12 +858,12 @@
         const rankLabel = idx === 0 ? "1st" : idx === 1 ? "2nd" : "3rd";
         const tags = [];
 
-        const tokenCount = holderMaps.token.get(addr) || 0;
-        const idCount = idMap.get(addr) || 0;
-        const shadowCount = shadowMap.get(addr) || 0;
+        const tokenCount   = holderMaps.token.get(addr)   || 0;
+        const idCount      = idMap.get(addr)              || 0;
+        const shadowCount  = shadowMap.get(addr)          || 0;
 
-        if (tokenCount > 0) tags.push(`<span class="tag tag-token">Token x${tokenCount}</span>`);
-        if (idCount > 0) tags.push(`<span class="tag tag-id">ID Pass x${idCount}</span>`);
+        if (tokenCount  > 0) tags.push(`<span class="tag tag-token">Token x${tokenCount}</span>`);
+        if (idCount     > 0) tags.push(`<span class="tag tag-id">ID Pass x${idCount}</span>`);
         if (shadowCount > 0) tags.push(`<span class="tag tag-shadow">Shadows x${shadowCount}</span>`);
 
         const holdsAllThree = tokenCount > 0 && idCount > 0 && shadowCount > 0;
@@ -1037,15 +905,24 @@
       const diff = nextDrawTimestamp - now;
 
       if (diff <= 0) {
+        if (drawInProgress) return;  // avoid double-trigger
+        drawInProgress = true;
+
         setText("drawStatus", "Timer hit zero. Freezing snapshot & running the draw…");
 
-        // Make sure holders are fresh, then pick winners
         refreshAllHolders().then(() => {
           pickWinners();
+
+          const newNext = Date.now() + DRAW_INTERVAL_MS;
+          nextDrawTimestamp = newNext;
+          localStorage.setItem(STORAGE_KEY, String(newNext));
+
+          drawInProgress = false;
+        }).catch((err) => {
+          console.error("Draw error:", err);
+          drawInProgress = false;
         });
 
-        // Move to the next global scheduled draw
-        nextDrawTimestamp = getNextDrawTimestamp();
         return;
       }
 
@@ -1075,6 +952,9 @@
      * INIT
      ************************************************************/
     async function init() {
+      // load or initialize the next draw timestamp (2h from now on first run)
+      nextDrawTimestamp = loadNextDrawTimestamp();
+
       updateCountdown();
       countdownInterval = setInterval(updateCountdown, 1000);
 
