@@ -546,7 +546,6 @@
     <div class="top-row">
       <div class="brand">
         <div class="brand-logo">
-          <!-- Make sure this file exists in the repo root -->
           <img src="./erebus-logo.png" alt="Erebus crest" />
         </div>
         <div class="brand-title">
@@ -660,7 +659,6 @@
       <div class="art-card">
         <div class="art-card-inner">
           <div class="art-glow"></div>
-          <!-- Make sure this image exists -->
           <img src="./erebus-creature.png" alt="Erebus creature" />
         </div>
       </div>
@@ -694,12 +692,10 @@
      ************************************************************/
     const MONAD_RPC = "https://testnet-rpc.monad.xyz";
 
-    // ERC-721 minimal ABI for ownerOf
     const ERC721_ABI = [
       "function ownerOf(uint256 tokenId) view returns (address)"
     ];
 
-    // Collections
     const COLLECTIONS = [
       {
         key: "idpass",
@@ -721,17 +717,12 @@
       }
     ];
 
-    // TIMER CONFIG
-    const INITIAL_OFFSET_MS = 2 * 60 * 60 * 1000;   // 2 hours until FIRST draw
-    const DRAW_INTERVAL_MS  = 12 * 60 * 60 * 1000;  // 12 hours between draws
+    const INITIAL_OFFSET_MS = 2 * 60 * 60 * 1000;   // 2 hours
+    const DRAW_INTERVAL_MS  = 12 * 60 * 60 * 1000;  // 12 hours
     const STORAGE_KEY       = "erebusNextDrawEpoch";
 
-    /************************************************************
-     * STATE
-     ************************************************************/
     const provider = new ethers.JsonRpcProvider(MONAD_RPC);
 
-    // Map<collectionKey, Map<address, count>>
     const holderMaps = {
       idpass: new Map(),
       shadows: new Map(),
@@ -744,9 +735,6 @@
     let scanning = false;
     let drawInProgress = false;
 
-    /************************************************************
-     * UTILITIES
-     ************************************************************/
     function shorten(addr) {
       if (!addr) return "";
       return addr.slice(0, 6) + "..." + addr.slice(-4);
@@ -782,8 +770,6 @@
     function loadNextDrawTimestamp() {
       const now = Date.now();
       const stored = Number(localStorage.getItem(STORAGE_KEY));
-
-      // First time or value in the past → start with 2 hours from now
       if (!stored || isNaN(stored) || stored <= now) {
         const first = now + INITIAL_OFFSET_MS;
         localStorage.setItem(STORAGE_KEY, String(first));
@@ -792,9 +778,6 @@
       return stored;
     }
 
-    /************************************************************
-     * HOLDER SCANNING
-     ************************************************************/
     async function scanCollection(col) {
       const contract = new ethers.Contract(col.address, ERC721_ABI, provider);
       const map = new Map();
@@ -806,10 +789,9 @@
           const key = owner.toLowerCase();
           map.set(key, (map.get(key) || 0) + 1);
         } catch (err) {
-          // token may not be minted yet, ignore
+          // token may not be minted yet
         }
       }
-
       holderMaps[col.key] = map;
     }
 
@@ -831,9 +813,6 @@
       }
     }
 
-    /************************************************************
-     * DRAW LOGIC
-     ************************************************************/
     function pickWinners() {
       const tokenMap = holderMaps.token;
       const eligibleAddrs = Array.from(tokenMap.keys());
@@ -897,26 +876,21 @@
       );
     }
 
-    /************************************************************
-     * COUNTDOWN
-     ************************************************************/
     function updateCountdown() {
       const now = Date.now();
       const diff = nextDrawTimestamp - now;
 
       if (diff <= 0) {
-        if (drawInProgress) return;  // avoid double-trigger
+        if (drawInProgress) return;
         drawInProgress = true;
 
         setText("drawStatus", "Timer hit zero. Freezing snapshot & running the draw…");
 
         refreshAllHolders().then(() => {
           pickWinners();
-
           const newNext = Date.now() + DRAW_INTERVAL_MS;
           nextDrawTimestamp = newNext;
           localStorage.setItem(STORAGE_KEY, String(newNext));
-
           drawInProgress = false;
         }).catch((err) => {
           console.error("Draw error:", err);
@@ -948,20 +922,12 @@
       }
     }
 
-    /************************************************************
-     * INIT
-     ************************************************************/
     async function init() {
-      // load or initialize the next draw timestamp (2h from now on first run)
       nextDrawTimestamp = loadNextDrawTimestamp();
-
       updateCountdown();
       countdownInterval = setInterval(updateCountdown, 1000);
 
-      // initial holder scan
       await refreshAllHolders();
-
-      // refresh every 5 minutes
       refreshInterval = setInterval(refreshAllHolders, 5 * 60 * 1000);
     }
 
