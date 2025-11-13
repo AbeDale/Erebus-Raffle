@@ -9,6 +9,7 @@
   <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.2/dist/ethers.umd.min.js"></script>
 
   <style>
+    /* ---------------- RESET ---------------- */
     * {
       box-sizing: border-box;
       margin: 0;
@@ -32,6 +33,7 @@
       text-decoration: none;
     }
 
+    /* ---------------- ANIMATED BACKGROUND ---------------- */
     .erebus-bg {
       position: fixed;
       inset: 0;
@@ -78,6 +80,7 @@
       100% { transform: rotate(360deg) scale(1.08); }
     }
 
+    /* ---------------- LAYOUT ---------------- */
     .page {
       min-height: 100%;
       position: relative;
@@ -177,6 +180,7 @@
       box-shadow: 0 0 10px rgba(78, 230, 255, 0.9);
     }
 
+    /* -------- main layout: left (timer) + middle (rules) + right (art) ------ */
     .hero-grid {
       display: grid;
       grid-template-columns: minmax(0, 1.15fr) minmax(0, 1.1fr) minmax(0, 0.9fr);
@@ -275,6 +279,7 @@
       opacity: 0.7;
     }
 
+    /* rules card */
     .rules-list {
       margin-top: 14px;
       display: flex;
@@ -312,6 +317,7 @@
       font-weight: 500;
     }
 
+    /* prize tiers */
     .prize-row {
       display: flex;
       flex-wrap: wrap;
@@ -357,6 +363,7 @@
       opacity: 0.85;
     }
 
+    /* art card */
     .art-card {
       position: relative;
       border-radius: 26px;
@@ -403,51 +410,41 @@
     }
 
     @keyframes artFloat {
-      0% {
-        transform: translateY(2px) scale(1.01) rotate(-0.3deg);
-      }
-      100% {
-        transform: translateY(-9px) scale(1.03) rotate(0.3deg);
-      }
+      0% { transform: translateY(2px)  scale(1.01) rotate(-0.3deg); }
+      100% { transform: translateY(-9px) scale(1.03) rotate(0.3deg); }
     }
 
-    /* ------- TRIPLE HOLDER LEADERBOARD ------- */
-    .triple-board {
-      margin-top: 22px;
-      padding: 14px 14px 10px;
-      border-radius: 18px;
-      border: 1px solid rgba(170, 135, 255, 0.9);
-      background: radial-gradient(circle at top, #140622, #050009);
+    /* ---------------- TRIPLE HOLDERS BOARD ---------------- */
+    .triple-card {
+      margin-top: 28px;
+      border-radius: 22px;
+      padding: 16px 14px 12px;
+      background: radial-gradient(circle at top, #150624, #050009);
+      border: 1px solid rgba(171, 133, 255, 0.9);
       box-shadow:
-        0 22px 70px rgba(0, 0, 0, 0.95),
-        0 0 22px rgba(150, 115, 255, 0.8);
+        0 24px 70px rgba(0, 0, 0, 0.9),
+        0 0 30px rgba(125, 96, 255, 0.9);
       font-size: 0.76rem;
+      overflow: hidden;
     }
 
-    .triple-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      margin-bottom: 6px;
-    }
-
-    .triple-header h2 {
+    .triple-card h3 {
       font-size: 0.9rem;
       text-transform: uppercase;
-      letter-spacing: 0.15em;
+      letter-spacing: 0.18em;
+      margin-bottom: 4px;
     }
 
     .triple-sub {
       font-size: 0.7rem;
-      opacity: 0.78;
+      opacity: 0.75;
       margin-bottom: 6px;
     }
 
     .triple-table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 2px;
+      margin-top: 6px;
     }
 
     .triple-table th,
@@ -460,20 +457,20 @@
       font-size: 0.7rem;
       opacity: 0.8;
       text-transform: uppercase;
-      letter-spacing: 0.1em;
+      letter-spacing: 0.12em;
     }
 
     .triple-table td {
-      font-size: 0.72rem;
-      opacity: 0.92;
+      font-size: 0.73rem;
+      opacity: 0.94;
     }
 
     .triple-table tr:nth-child(odd) td {
-      background: rgba(13, 4, 40, 0.6);
+      background: rgba(16, 5, 48, 0.85);
     }
 
     .triple-table tr:nth-child(even) td {
-      background: rgba(7, 2, 24, 0.85);
+      background: rgba(8, 3, 28, 0.95);
     }
 
     .addr {
@@ -486,6 +483,7 @@
       font-size: 0.75rem;
     }
 
+    /* ---------------- WINNERS PANEL ---------------- */
     .winners-panel {
       margin-top: 24px;
       padding: 14px 14px 10px;
@@ -598,6 +596,7 @@
       opacity: 0.82;
     }
 
+    /* ---------------- FOOTER ---------------- */
     .footer {
       margin-top: 18px;
       font-size: 0.68rem;
@@ -616,13 +615,15 @@
     <div class="top-row">
       <div class="brand">
         <div class="brand-logo">
+          <!-- Make sure this file exists in the repo root -->
           <img src="./erebus-logo.png" alt="Erebus crest" />
         </div>
         <div class="brand-title">
           <h1>EREBUS RAFFLE OBSERVATORY</h1>
           <p>
-            Shadow raffles for <strong>Erebus: Token</strong>, boosted by
-            <strong>ID Pass</strong> and <strong>Enter the Shadows</strong> on Monad testnet.
+            Live tracker for the <strong>Erebus: ID Pass</strong>,
+            <strong>Enter the Shadows</strong>, and <strong>Erebus: Token</strong>
+            on Monad testnet. The shadows decide who climbs.
           </p>
         </div>
       </div>
@@ -662,7 +663,7 @@
         </div>
 
         <div class="draw-status" id="drawStatus">
-          Preparing the first raffle window. First draw opens in <span>~4 hours</span> from when you load this page.
+          Timer is synced to the global Erebus schedule. Refreshing the page will not reset it.
         </div>
         <div class="timer-note">
           Draws are simulated client-side for now. Once wired to an on-chain raffle contract, this panel becomes the
@@ -686,7 +687,7 @@
             <span class="rules-badge">2</span>
             <span>
               <span class="rules-label-strong">Erebus: ID Pass</span> and
-              <span class="rules-label-strong">Erebus: Enter the Shadows</span> 
+              <span class="rules-label-strong">Erebus: Enter the Shadows</span>
               act as shadow boosts — they increase your prize tier if you win.
             </span>
           </li>
@@ -725,26 +726,22 @@
       </div>
 
       <!-- ART CARD -->
-      <div class="card-glass art-card">
+      <div class="art-card">
         <div class="art-card-inner">
           <div class="art-glow"></div>
+          <!-- Make sure this image exists -->
           <img src="./erebus-creature.png" alt="Erebus creature" />
         </div>
       </div>
     </div>
 
-    <!-- TRIPLE HOLDER LEADERBOARD -->
-    <div class="triple-board">
-      <div class="triple-header">
-        <h2>TRIPLE SHADOW HOLDERS</h2>
-        <span class="note" style="font-size:0.7rem; opacity:0.8;">
-          Live snapshot of wallets holding all three Erebus collections.
-        </span>
-      </div>
+    <!-- TRIPLE HOLDERS (SMALL LEADERBOARD) -->
+    <div class="triple-card">
+      <h3>TRIPLE SHADOW HOLDERS</h3>
       <div class="triple-sub">
-        Top wallets ranked by total count of <strong>ID Pass + Shadows + Token</strong>.
+        Top wallets ranked by total count of <strong>ID Pass + Shadows + Token</strong>.<br />
+        Live snapshot of wallets holding all three Erebus collections.
       </div>
-
       <table class="triple-table">
         <thead>
           <tr>
@@ -753,8 +750,8 @@
             <th>Total</th>
           </tr>
         </thead>
-        <tbody id="tripleBody">
-          <tr><td colspan="3">Waiting for first scan…</td></tr>
+        <tbody id="triple-body">
+          <tr><td colspan="3">Waiting for first scan...</td></tr>
         </tbody>
       </table>
     </div>
@@ -787,16 +784,18 @@
      ************************************************************/
     const MONAD_RPC = "https://testnet-rpc.monad.xyz";
 
+    // ERC-721 minimal ABI for ownerOf
     const ERC721_ABI = [
       "function ownerOf(uint256 tokenId) view returns (address)"
     ];
 
+    // Collection config
     const COLLECTIONS = [
       {
         key: "idpass",
         name: "Erebus: ID Pass",
         address: "0x86942cf234ba763b3c95cae7f63dcf17abc56add",
-        maxTokenId: 499
+        maxTokenId: 499 // adjust if needed
       },
       {
         key: "shadows",
@@ -812,21 +811,36 @@
       }
     ];
 
-    const FIRST_DRAW_OFFSET_MS = 4 * 60 * 60 * 1000;
-    const DRAW_INTERVAL_MS = 12 * 60 * 60 * 1000;
+    // ---------------- TIMER SETUP ----------------
+    const DRAW_INTERVAL_MS = 12 * 60 * 60 * 1000; // 12 hours
+
+    // 👉 Set the time of the VERY FIRST draw (UTC).
+    // Example below: 14 Nov 2025, 18:00:00 UTC
+    const FIRST_DRAW_EPOCH = Date.parse("2025-11-14T18:00:00Z");
+
+    function getNextDrawTimestamp() {
+      const now = Date.now();
+      if (now <= FIRST_DRAW_EPOCH) return FIRST_DRAW_EPOCH;
+
+      const elapsed = now - FIRST_DRAW_EPOCH;
+      const intervalsPassed = Math.floor(elapsed / DRAW_INTERVAL_MS);
+      return FIRST_DRAW_EPOCH + (intervalsPassed + 1) * DRAW_INTERVAL_MS;
+    }
+
+    let nextDrawTimestamp = getNextDrawTimestamp();
 
     /************************************************************
      * STATE
      ************************************************************/
     const provider = new ethers.JsonRpcProvider(MONAD_RPC);
 
+    // Map<collectionKey, Map<address, count>>
     const holderMaps = {
       idpass: new Map(),
       shadows: new Map(),
       token: new Map()
     };
 
-    let nextDrawTimestamp = Date.now() + FIRST_DRAW_OFFSET_MS;
     let countdownInterval = null;
     let refreshInterval = null;
     let scanning = false;
@@ -887,42 +901,42 @@
       holderMaps[col.key] = map;
     }
 
-    function computeTripleHolders(limit = 50) {
-      const triples = [];
+    function recomputeTripleLeaderboard() {
+      const idMap = holderMaps.idpass;
+      const shadowMap = holderMaps.shadows;
       const tokenMap = holderMaps.token;
 
-      for (const [addr, tokenCount] of tokenMap.entries()) {
-        const idCount = holderMaps.idpass.get(addr) || 0;
-        const shadowCount = holderMaps.shadows.get(addr) || 0;
+      const combined = new Map();
 
-        if (idCount > 0 && shadowCount > 0 && tokenCount > 0) {
-          const total = idCount + shadowCount + tokenCount;
-          triples.push({ addr, total });
+      // Only include addresses that hold ALL THREE (id + shadow + token)
+      for (const addr of tokenMap.keys()) {
+        const t = tokenMap.get(addr) || 0;
+        const i = idMap.get(addr) || 0;
+        const s = shadowMap.get(addr) || 0;
+        if (t > 0 && i > 0 && s > 0) {
+          combined.set(addr, t + i + s);
         }
       }
 
-      triples.sort((a, b) => b.total - a.total);
-      return triples.slice(0, limit);
-    }
+      const entries = Array.from(combined.entries());
+      entries.sort((a, b) => b[1] - a[1]);
+      const top = entries.slice(0, 50); // top 50 (or less)
 
-    function renderTripleBoard() {
-      const tbody = document.getElementById("tripleBody");
+      const tbody = document.getElementById("triple-body");
       if (!tbody) return;
 
-      const rows = computeTripleHolders(50);
-
-      if (!rows.length) {
-        tbody.innerHTML = `<tr><td colspan="3">No wallets currently holding all three collections.</td></tr>`;
+      if (!top.length) {
+        tbody.innerHTML = `<tr><td colspan="3">No triple holders detected yet.</td></tr>`;
         return;
       }
 
-      tbody.innerHTML = rows.map((row, idx) => {
+      tbody.innerHTML = top.map(([addr, total], idx) => {
         const icon = formatRankIcon(idx + 1);
         return `
           <tr>
             <td class="rank-medal">${icon}</td>
-            <td class="addr">${shorten(row.addr)}</td>
-            <td>${row.total}</td>
+            <td class="addr">${shorten(addr)}</td>
+            <td>${total}</td>
           </tr>
         `;
       }).join("");
@@ -937,7 +951,7 @@
         for (const col of COLLECTIONS) {
           await scanCollection(col);
         }
-        renderTripleBoard();
+        recomputeTripleLeaderboard();
         setText("holderStatus", "Holder index: fresh snapshot loaded. Next refresh in ~5 minutes.");
       } catch (err) {
         console.error("Error scanning holders", err);
@@ -951,6 +965,7 @@
      * DRAW LOGIC
      ************************************************************/
     function pickWinners() {
+      // eligible = must hold at least one Erebus: Token
       const tokenMap = holderMaps.token;
       const eligibleAddrs = Array.from(tokenMap.keys());
       if (eligibleAddrs.length === 0) {
@@ -967,6 +982,7 @@
         winners.push(addr);
       }
 
+      // Build winner cards
       const idMap = holderMaps.idpass;
       const shadowMap = holderMaps.shadows;
 
@@ -1022,20 +1038,23 @@
 
       if (diff <= 0) {
         setText("drawStatus", "Timer hit zero. Freezing snapshot & running the draw…");
+
+        // Make sure holders are fresh, then pick winners
         refreshAllHolders().then(() => {
           pickWinners();
         });
 
-        nextDrawTimestamp = now + DRAW_INTERVAL_MS;
+        // Move to the next global scheduled draw
+        nextDrawTimestamp = getNextDrawTimestamp();
         return;
       }
 
       const totalSeconds = Math.floor(diff / 1000);
-      const hours = Math.floor(totalSeconds / 3600);
+      const hours   = Math.floor(totalSeconds / 3600);
       const minutes = Math.floor((totalSeconds % 3600) / 60);
       const seconds = totalSeconds % 60;
 
-      setText("cd-hours", String(hours).padStart(2, "0"));
+      setText("cd-hours",   String(hours).padStart(2, "0"));
       setText("cd-minutes", String(minutes).padStart(2, "0"));
       setText("cd-seconds", String(seconds).padStart(2, "0"));
 
@@ -1059,7 +1078,10 @@
       updateCountdown();
       countdownInterval = setInterval(updateCountdown, 1000);
 
+      // initial holder scan
       await refreshAllHolders();
+
+      // refresh every 5 minutes
       refreshInterval = setInterval(refreshAllHolders, 5 * 60 * 1000);
     }
 
