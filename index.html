@@ -892,70 +892,117 @@
       tbody.innerHTML = rowsHtml;
     }
 
-function applyStateFromServer(payload) {
-  // Make sure we actually got something useful
-  if (!payload || !payload.next_draw_at) {
-    setText("drawStatus", "Failed to sync raffle state from server.");
-    return;
-  }
+  async function fetchState() {
+    try {
+      // Show syncing text immediately
+      setText("drawStatus", "Syncing with Erebus raffle oracle...");
 
-  // Convert Supabase's ISO string into a numeric timestamp (ms since epoch)
-  const ts = Date.parse(payload.next_draw_at);
+      // Call our API
+      const res = await fetch(API_STATE_URL, { cache: "no-store" });
 
-  // For now, treat winners as the "draws" array the UI expects
-  const draws = payload.winners || [];
-
-  // This is what the countdown code expects: a NUMBER timestamp
-  if (typeof ts === "number" && ts > 0) {
-    nextDrawTimestamp = ts;
-    startCountdown();
-  }
-
-  // Render latest draw + history (will just be empty arrays at first)
-  renderLatestDraw(draws);
-  renderHistory(draws);
-
-  // Update status text so we know the sync actually finished
-  const now = new Date();
-  setText(
-    "drawStatus",
-    `Next raffle pulls a snapshot when this timer hits zero. Last sync: ${now.toUTCString()}`
-  );
-}
-
-
-
-      const now = new Date();
-      setText(
-        "drawStatus",
-        `Next raffle pulls a snapshot when this timer hits zero. Last sync: ${now.toUTCString()}`
-      );
-    }
-
-    function startCountdown() {
-      if (!nextDrawTimestamp) {
-        setText("cd-hours", "--");
-        setText("cd-minutes", "--");
-        setText("cd-seconds", "--");
-        return;
+      if (!res.ok) {
+        throw new Error("HTTP " + res.status);
       }
 
-      if (countdownInterval) clearInterval(countdownInterval);
+      const raw = await res.json();
+      applyStateFromServer(raw);
+    } catch (err) {
+      console.error("Error fetching state:", err);
+      setText(
+        "drawStatus",
+        "Error fetching raffle state. Check console / network and refresh."
+      );
+    }
+  }
 
-      const tick = () => {
-        const now = Date.now();
-        const diff = nextDrawTimestamp - now;
+  function applyStateFromServer(raw) {
+    console.log("Erebus state payload:", raw);
 
-        if (diff <= 0) {
-          setText("cd-hours", "00");
-          setText("cd-minutes", "00");
-          setText("cd-seconds", "00");
+    // Handle {…}, { state: {…} } or [ {…} ]
+    let payload = raw;
+    if (raw && raw.state) payload = raw.state;
+    if (Array.isArray(raw)) payload = raw[0];
 
-          if (!drawInFlight) {
-            triggerDraw();
-          }
-          return;
+    if (!payload) {
+      setText("drawStatus", "Failed to sync raffle state (empty payload).");
+      return;
+    }
+
+    // Try all reasonable field names just in case
+    const iso =
+      payload.next_draw_at ||
+      payload.nextDrawAt ||
+      payload.next_draw_at_utc ||
+      payload.next_draw_time;
+
+    if (!iso) {
+      setText(
+        "drawStatus",
+        "Raffle state loaded but next_draw_at is missing. Check backend."
+      );
+      return;
+    }
+
+    const ts = Date.parse(iso);
+
+    if (!Number.isFinite(ts)) {
+      setText(
+        "drawStatus",
+        "Raffle state loaded but timestamp is invalid: " + iso
+      );
+      return;
+    }
+
+    // This is what the countdown code uses
+    nextDrawTimestamp = ts;
+
+    const draws = payload.draws || payload.winners || [];
+
+    renderLatestDraw(draws);
+    renderHistory(draws);
+
+    // Actually start the countdown
+    startCountdown();
+
+    const now = new Date();
+    setText(
+      "drawStatus",
+      `Next shadow draw countdown is live. Last sync: ${now.toUTCString()}`
+    );
+  }
+
+  async function triggerDraw() {
+    drawInFlight = true;
+    setText(
+      "drawStatus",
+      "Timer hit zero. Freezing snapshot & running the draw on the server…"
+    );
+
+    try {
+      const res = await fetch(API_DRAW_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
         }
+      });
+
+      if (!res.ok) {
+        throw new Error("HTTP " + res.status);
+      }
+
+      const raw = await res.json();
+      applyStateFromServer(raw);
+    } catch (err) {
+      console.error("Error triggering draw:", err);
+      setText(
+        "drawStatus",
+        "Error triggering draw. Check console / network and refresh."
+      );
+    } finally {
+      drawInFlight = false;
+    }
+  }
+
 
         const totalSeconds = Math.floor(diff / 1000);
         const hours = Math.floor(totalSeconds / 3600);
@@ -1119,6 +1166,7 @@ function applyStateFromServer(raw) {
   </script>
 </body>
 </html>
+
 
 
 
