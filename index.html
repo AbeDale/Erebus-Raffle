@@ -892,84 +892,86 @@
       tbody.innerHTML = rowsHtml;
     }
 
-  async function fetchState() {
-    try {
-      // Show syncing text immediately
-      setText("drawStatus", "Syncing with Erebus raffle oracle...");
+// --- sync state from Erebus backend ---------------------------------------
 
-      // Call our API
-      const res = await fetch(API_STATE_URL, { cache: "no-store" });
+async function fetchState() {
+  try {
+    // show syncing text immediately
+    setText("drawStatus", "Syncing with Erebus raffle oracle...");
 
-      if (!res.ok) {
-        throw new Error("HTTP " + res.status);
-      }
+    // call our API
+    const res = await fetch(API_STATE_URL, { cache: "no-store" });
 
-      const raw = await res.json();
-      applyStateFromServer(raw);
-    } catch (err) {
-      console.error("Error fetching state:", err);
-      setText(
-        "drawStatus",
-        "Error fetching raffle state. Check console / network and refresh."
-      );
-    }
-  }
-
-  function applyStateFromServer(raw) {
-    console.log("Erebus state payload:", raw);
-
-    // Handle {…}, { state: {…} } or [ {…} ]
-    let payload = raw;
-    if (raw && raw.state) payload = raw.state;
-    if (Array.isArray(raw)) payload = raw[0];
-
-    if (!payload) {
-      setText("drawStatus", "Failed to sync raffle state (empty payload).");
-      return;
+    if (!res.ok) {
+      throw new Error("HTTP " + res.status);
     }
 
-    // Try all reasonable field names just in case
-    const iso =
-      payload.next_draw_at ||
-      payload.nextDrawAt ||
-      payload.next_draw_at_utc ||
-      payload.next_draw_time;
-
-    if (!iso) {
-      setText(
-        "drawStatus",
-        "Raffle state loaded but next_draw_at is missing. Check backend."
-      );
-      return;
-    }
-
-    const ts = Date.parse(iso);
-
-    if (!Number.isFinite(ts)) {
-      setText(
-        "drawStatus",
-        "Raffle state loaded but timestamp is invalid: " + iso
-      );
-      return;
-    }
-
-    // This is what the countdown code uses
-    nextDrawTimestamp = ts;
-
-    const draws = payload.draws || payload.winners || [];
-
-    renderLatestDraw(draws);
-    renderHistory(draws);
-
-    // Actually start the countdown
-    startCountdown();
-
-    const now = new Date();
+    const raw = await res.json();
+    applyStateFromServer(raw);
+  } catch (err) {
+    console.error("Error fetching state:", err);
     setText(
       "drawStatus",
-      `Next shadow draw countdown is live. Last sync: ${now.toUTCString()}`
+      "Error fetching raffle state. Check console / network and refresh."
     );
   }
+}
+
+function applyStateFromServer(raw) {
+  console.log("raffle state payload", raw);
+
+  // raw can be: { ... }, { state: {...} } or [ { ... } ]
+  let payload = raw;
+
+  if (Array.isArray(raw)) {
+    payload = raw[0];
+  } else if (raw && raw.state) {
+    payload = raw.state;
+  }
+
+  if (!payload) {
+    setText("drawStatus", "Failed to sync raffle state (empty payload).");
+    return;
+  }
+
+  // --- figure out which field has the timestamp --------------------------
+  const iso =
+    payload.next_draw_at ||    // Supabase column
+    payload.nextDrawAt ||      // camelCase variant
+    payload.next_draw_time;    // fallback name
+
+  if (!iso) {
+    setText(
+      "drawStatus",
+      "Raffle state loaded but next_draw_at is missing. Check backend."
+    );
+    return;
+  }
+
+  const ts = Date.parse(iso);
+
+  if (Number.isNaN(ts)) {
+    setText(
+      "drawStatus",
+      "Raffle state loaded but timestamp is invalid: " + iso
+    );
+    return;
+  }
+
+  // this is what the countdown uses
+  nextDrawTimestamp = ts;
+
+  // optional extra data from backend
+  draws   = payload.draws   || [];
+  winners = payload.winners || [];
+
+  setText("drawStatus", "Raffle state synced from Erebus backend.");
+
+  startCountdown();
+  renderLatestDraw(draws);
+  renderHistory(draws);
+}
+
 
   async function triggerDraw() {
     drawInFlight = true;
@@ -1166,6 +1168,7 @@ function applyStateFromServer(raw) {
   </script>
 </body>
 </html>
+
 
 
 
