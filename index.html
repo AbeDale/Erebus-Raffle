@@ -5,9 +5,6 @@
   <title>Erebus Raffle Observatory</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-  <!-- Ethers v6 UMD (global `ethers`) -->
-  <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.2/dist/ethers.umd.min.js"></script>
-
   <style>
     /* ---------------- RESET ---------------- */
     * {
@@ -111,8 +108,8 @@
     }
 
     .brand-logo {
-      width: 52px;
-      height: 52px;
+      width: 64px;
+      height: 64px;
       border-radius: 50%;
       background:
         radial-gradient(circle at 20% 0%, rgba(255, 255, 255, 0.85), transparent 55%),
@@ -133,7 +130,7 @@
     }
 
     .brand-title h1 {
-      font-size: 1.6rem;
+      font-size: 1.8rem;
       letter-spacing: 0.08em;
       text-transform: uppercase;
       text-shadow:
@@ -142,9 +139,10 @@
     }
 
     .brand-title p {
-      font-size: 0.8rem;
-      opacity: 0.8;
-      max-width: 420px;
+      margin-top: 4px;
+      font-size: 0.86rem;
+      opacity: 0.85;
+      max-width: 520px;
     }
 
     .top-right {
@@ -248,7 +246,7 @@
     }
 
     .time-value {
-      font-size: 1.7rem;
+      font-size: 1.8rem;
       font-weight: 600;
       text-shadow:
         0 0 12px rgba(255, 219, 255, 0.9),
@@ -418,20 +416,26 @@
       }
     }
 
-    /* ---------------- WINNERS PANEL ---------------- */
-    .winners-panel {
-      margin-top: 24px;
-      padding: 14px 14px 10px;
-      border-radius: 16px;
-      border: 1px solid rgba(207, 161, 255, 0.9);
-      background: radial-gradient(circle at top, #19072e, #050009);
-      box-shadow:
-        0 26px 80px rgba(0, 0, 0, 0.95),
-        0 0 26px rgba(181, 137, 255, 0.8);
-      font-size: 0.76rem;
+    /* ---------------- LATEST DRAW + HISTORY ---------------- */
+    .results-wrapper {
+      margin-top: 26px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
     }
 
-    .winners-header {
+    .results-card {
+      border-radius: 18px;
+      padding: 14px 16px;
+      background: radial-gradient(circle at top, #150624, #050009);
+      border: 1px solid rgba(160, 120, 255, 0.9);
+      box-shadow:
+        0 24px 70px rgba(0, 0, 0, 0.95),
+        0 0 24px rgba(130, 100, 255, 0.85);
+      font-size: 0.78rem;
+    }
+
+    .results-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -439,84 +443,61 @@
       margin-bottom: 8px;
     }
 
-    .winners-header h2 {
-      font-size: 0.9rem;
+    .results-header h2 {
+      font-size: 0.92rem;
       text-transform: uppercase;
-      letter-spacing: 0.15em;
+      letter-spacing: 0.16em;
     }
 
-    .winners-header span.note {
-      font-size: 0.7rem;
-      opacity: 0.8;
-    }
-
-    .winner-list {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      margin-top: 6px;
-    }
-
-    .draw-block {
-      border-radius: 12px;
-      padding: 8px 9px;
-      background: radial-gradient(circle at top, #210836, #06000c);
-      border: 1px solid rgba(160, 115, 255, 0.9);
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.9);
-    }
-
-    .draw-header {
+    .results-header span {
       font-size: 0.72rem;
       opacity: 0.8;
-      margin-bottom: 4px;
     }
 
-    .winner-round-grid {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 8px;
-    }
-
-    @media (max-width: 820px) {
-      .winner-round-grid {
-        grid-template-columns: minmax(0, 1fr);
-      }
-    }
-
-    .winner-card {
-      border-radius: 10px;
-      padding: 6px 7px;
-      background: radial-gradient(circle at top, #2a0943, #050009);
-      border: 1px solid rgba(178, 142, 255, 0.9);
-    }
-
-    .winner-header-line {
+    .winner-row {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      font-size: 0.72rem;
-      margin-bottom: 3px;
+      gap: 8px;
+      padding: 6px 0;
+      border-top: 1px solid rgba(110, 80, 200, 0.3);
+      font-size: 0.78rem;
     }
 
-    .winner-rank {
+    .winner-main {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .winner-rank-pill {
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: rgba(40, 12, 96, 0.95);
+      border: 1px solid rgba(230, 200, 255, 0.9);
+      font-size: 0.7rem;
       display: inline-flex;
       align-items: center;
       gap: 4px;
-      font-size: 0.75rem;
+    }
+
+    .winner-rank-pill span.icon {
+      font-size: 0.9rem;
     }
 
     .winner-addr {
-      font-family: "SF Mono", ui-monospace, Menlo, Monaco;
-      font-size: 0.7rem;
+      font-family: "SF Mono", ui-monospace, Menlo, Monaco, Consolas,
+        "Liberation Mono", "Courier New", monospace;
+      font-size: 0.74rem;
       opacity: 0.92;
     }
 
     .winner-tags {
-      margin-top: 3px;
       display: flex;
       flex-wrap: wrap;
       gap: 4px;
       font-size: 0.68rem;
+      justify-content: flex-end;
     }
 
     .tag {
@@ -532,25 +513,71 @@
       color: #e9ffe9;
     }
 
-    .tag-id {
-      background: rgba(68, 36, 125, 0.95);
-    }
-
-    .tag-shadow {
-      background: rgba(82, 29, 117, 0.95);
-    }
-
-    .tag-token {
-      background: rgba(125, 50, 140, 0.95);
-    }
-
-    .holder-status {
-      margin-top: 6px;
+    .copy-btn {
+      padding: 2px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(180, 150, 255, 0.85);
+      background: rgba(15, 5, 40, 0.9);
       font-size: 0.7rem;
-      opacity: 0.82;
+      cursor: pointer;
+      margin-left: 6px;
     }
 
-    /* ---------------- FOOTER ---------------- */
+    .copy-btn:active {
+      transform: scale(0.96);
+    }
+
+    /* history */
+    .history-table-wrapper {
+      margin-top: 6px;
+      max-height: 260px;
+      overflow-y: auto;
+      border-radius: 12px;
+      border: 1px solid rgba(96, 70, 190, 0.7);
+    }
+
+    table.history-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.74rem;
+    }
+
+    .history-table th,
+    .history-table td {
+      padding: 4px 6px;
+      text-align: left;
+    }
+
+    .history-table th {
+      position: sticky;
+      top: 0;
+      background: rgba(14, 5, 40, 0.98);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      font-size: 0.7rem;
+      opacity: 0.8;
+      z-index: 1;
+    }
+
+    .history-table tr:nth-child(odd) td {
+      background: rgba(13, 4, 40, 0.85);
+    }
+
+    .history-table tr:nth-child(even) td {
+      background: rgba(7, 2, 24, 0.95);
+    }
+
+    .history-round {
+      font-weight: 600;
+      opacity: 0.9;
+    }
+
+    .history-winners {
+      font-family: "SF Mono", ui-monospace, Menlo, Monaco, Consolas,
+        "Liberation Mono", "Courier New", monospace;
+      font-size: 0.72rem;
+    }
+
     .footer {
       margin-top: 18px;
       font-size: 0.68rem;
@@ -569,7 +596,7 @@
     <div class="top-row">
       <div class="brand">
         <div class="brand-logo">
-          <!-- Make sure erebus-logo.png is uploaded next to index.html -->
+          <!-- Make sure this file exists in your project root -->
           <img src="./erebus-logo.png" alt="Erebus crest" />
         </div>
         <div class="brand-title">
@@ -617,11 +644,10 @@
         </div>
 
         <div class="draw-status" id="drawStatus">
-          Preparing the first raffle window. First draw opens in <span>~2 hours</span> from when you load this page.
+          Syncing with Erebus raffle oracle…
         </div>
-        <div class="timer-note">
-          Draws currently run in your browser using Monad testnet snapshots.
-          For fully on-chain randomness, wire this UI to an Erebus raffle contract.
+        <div class="timer-note" id="timerNote">
+          This timer is server-driven. Everyone sees the same countdown and the same winners.
         </div>
       </div>
 
@@ -641,15 +667,16 @@
             <span class="rules-badge">2</span>
             <span>
               <span class="rules-label-strong">Erebus: ID Pass</span> and
-              <span class="rules-label-strong">Erebus: Enter the Shadows</span>
+              <span class="rules-label-strong">Erebus: Enter the Shadows</span> 
               act as shadow boosts — they increase your prize tier if you win.
             </span>
           </li>
           <li>
             <span class="rules-badge">3</span>
             <span>
-              Holders are re-scanned every <span class="rules-label-strong">5 minutes</span>.
-              Selling before the timer hits zero means you vanish from the pool.
+              Draws are executed and stored on the Erebus backend every
+              <span class="rules-label-strong">12 hours</span>.
+              History is global and cannot be faked by refreshing.
             </span>
           </li>
         </ul>
@@ -683,101 +710,76 @@
       <div class="art-card">
         <div class="art-card-inner">
           <div class="art-glow"></div>
-          <!-- Make sure erebus-creature.png is uploaded next to index.html -->
+          <!-- Make sure this file exists in your project root -->
           <img src="./erebus-creature.png" alt="Erebus creature" />
         </div>
       </div>
     </div>
 
-    <!-- WINNERS HISTORY -->
-    <div class="winners-panel">
-      <div class="winners-header">
-        <h2>Draw history</h2>
-        <span class="note" id="winnersMeta">
-          No draws fired yet. First one hits when the timer reaches zero.
-        </span>
+    <!-- LATEST RESULTS + HISTORY -->
+    <div class="results-wrapper">
+
+      <!-- LATEST DRAW -->
+      <div class="results-card" id="latestResultsCard">
+        <div class="results-header">
+          <h2>Latest draw results</h2>
+          <span id="latestMeta">Waiting for first draw…</span>
+        </div>
+
+        <div id="latestWinners">
+          <!-- Winner rows injected here -->
+        </div>
       </div>
 
-      <div class="winner-list" id="winnersList">
-        <!-- draw blocks injected here -->
-      </div>
+      <!-- DRAW HISTORY -->
+      <div class="results-card">
+        <div class="results-header">
+          <h2>Draw history</h2>
+          <span id="historyMeta">No draws recorded yet.</span>
+        </div>
 
-      <div class="holder-status" id="holderStatus">
-        Holder index: waiting for first sync from Monad testnet…
+        <div class="history-table-wrapper">
+          <table class="history-table" id="historyTable">
+            <thead>
+              <tr>
+                <th style="width: 14%;">Round</th>
+                <th style="width: 24%;">Executed (UTC)</th>
+                <th>Winners (1st / 2nd / 3rd)</th>
+              </tr>
+            </thead>
+            <tbody id="historyBody">
+              <!-- History rows injected here -->
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
 
     <div class="footer">
-      This UI runs an off-chain random draw using browser crypto and Monad testnet snapshots.
-      For trustless raffles, plug it into an Erebus smart contract with verifiable randomness.
+      This UI reads raffle state from Erebus backend via
+      <code>/api/get-state</code> and <code>/api/save-draw</code>.
+      For a fully trustless raffle, wire this interface to an Erebus smart contract with verifiable randomness.
     </div>
   </div>
 
   <script>
-    /************************************************************
-     * CONFIG
-     ************************************************************/
-    const MONAD_RPC = "https://testnet-rpc.monad.xyz";
+    const API_STATE_URL = "/api/get-state";
+    const API_DRAW_URL  = "/api/save-draw";
 
-    // Minimal ERC-721 ABI
-    const ERC721_ABI = [
-      "function ownerOf(uint256 tokenId) view returns (address)"
-    ];
-
-    // Collections
-    const COLLECTIONS = {
-      idpass: {
-        key: "idpass",
-        name: "Erebus: ID Pass",
-        address: "0x86942cf234ba763b3c95cae7f63dcf17abc56add",
-        maxTokenId: 499
-      },
-      shadows: {
-        key: "shadows",
-        name: "Erebus: Enter the Shadows",
-        address: "0x7fd12335de83500b8ff39c206398c55466235160",
-        maxTokenId: 499
-      },
-      token: {
-        key: "token",
-        name: "Erebus: Token",
-        address: "0xa901eb1f392ada46d88da272488a1af753d69f9b",
-        maxTokenId: 499
-      }
-    };
-
-    // Raffle cadence: every 12h, aligned via UTC-based phase
-    const DRAW_INTERVAL_MS = 12 * 60 * 60 * 1000;
-    // Phase offset (ms). Tweak this if you want the cycle to hit different UTC hours.
-    const PHASE_OFFSET_MS = 0;
-
-    // Local storage key for draw history (per browser)
-    const HISTORY_KEY = "erebusRaffleHistory_v1";
-
-    /************************************************************
-     * STATE
-     ************************************************************/
-    const provider = new ethers.JsonRpcProvider(MONAD_RPC);
-
-    // Map<collectionKey, Map<address, count>>
-    const holderMaps = {
-      idpass: new Map(),
-      shadows: new Map(),
-      token: new Map()
-    };
-
-    let scanning = false;
+    let nextDrawTimestamp = null;
     let countdownInterval = null;
-    let refreshInterval = null;
-    let nextDrawTimestamp = 0;
-    let drawHistory = [];
+    let drawInFlight = false;
 
-    /************************************************************
-     * UTILITIES
-     ************************************************************/
-    function shorten(addr) {
-      if (!addr) return "";
+    function shortenAddress(addr) {
+      if (!addr || addr.length < 10) return addr || "";
       return addr.slice(0, 6) + "..." + addr.slice(-4);
+    }
+
+    function formatUTC(iso) {
+      if (!iso) return "-";
+      const d = new Date(iso);
+      if (Number.isNaN(d.getTime())) return iso;
+      return d.toUTCString();
     }
 
     function setText(id, text) {
@@ -785,325 +787,252 @@
       if (el) el.textContent = text;
     }
 
-    function setHTML(id, html) {
-      const el = document.getElementById(id);
-      if (el) el.innerHTML = html;
-    }
+    function renderLatestDraw(draws) {
+      const container = document.getElementById("latestWinners");
+      const metaEl = document.getElementById("latestMeta");
 
-    function formatRankIcon(rank) {
-      if (rank === 1) return "👑";
-      if (rank === 2) return "🥈";
-      if (rank === 3) return "🥉";
-      return "•";
-    }
-
-    function randomInt(maxExclusive) {
-      if (maxExclusive <= 0) return 0;
-      if (window.crypto && window.crypto.getRandomValues) {
-        const arr = new Uint32Array(1);
-        window.crypto.getRandomValues(arr);
-        return arr[0] % maxExclusive;
-      }
-      return Math.floor(Math.random() * maxExclusive);
-    }
-
-    // Next draw timestamp based on real UTC time (no reset on refresh)
-    function computeNextDrawTimestamp() {
-      const now = Date.now();
-      const phase = (now - PHASE_OFFSET_MS) % DRAW_INTERVAL_MS;
-      const remaining = DRAW_INTERVAL_MS - phase;
-      return now + remaining;
-    }
-
-    /************************************************************
-     * HISTORY PERSISTENCE (per-browser)
-     ************************************************************/
-    function loadHistory() {
-      try {
-        const raw = localStorage.getItem(HISTORY_KEY);
-        if (!raw) return [];
-        const parsed = JSON.parse(raw);
-        if (!Array.isArray(parsed)) return [];
-        return parsed;
-      } catch {
-        return [];
-      }
-    }
-
-    function saveHistory() {
-      try {
-        localStorage.setItem(HISTORY_KEY, JSON.stringify(drawHistory));
-      } catch {
-        // ignore quota errors
-      }
-    }
-
-    function renderHistory() {
-      const container = document.getElementById("winnersList");
-      if (!container) return;
-
-      if (!drawHistory.length) {
+      if (!draws || !draws.length) {
         container.innerHTML = "";
-        setText(
-          "winnersMeta",
-          "No draws fired yet. First one hits when the timer reaches zero."
-        );
+        metaEl.textContent = "No draws fired yet. First one hits when the timer reaches zero.";
         return;
       }
 
-      // latest draw
-      const last = drawHistory[drawHistory.length - 1];
-      const lastTime = new Date(last.timestamp).toUTCString();
-      setText("winnersMeta", `Last draw at ${lastTime} (UTC).`);
+      const latest = draws[draws.length - 1];
+      metaEl.textContent = `Round #${latest.round} · ${formatUTC(latest.executedAt)}`;
 
-      // render all draws, latest first
-      const blocks = drawHistory
-        .slice()
-        .reverse()
-        .map((draw, idx) => {
-          const timeStr = new Date(draw.timestamp).toUTCString();
-          const roundNum = drawHistory.length - idx;
-          const cards = draw.winners
-            .map((w, i) => {
-              const rankLabel = i === 0 ? "1st" : i === 1 ? "2nd" : "3rd";
-              const icon = formatRankIcon(i + 1);
-              const tags = [];
+      if (!latest.winners || !latest.winners.length) {
+        container.innerHTML = "<div>No winners recorded for this round.</div>";
+        return;
+      }
 
-              if (w.tokenCount > 0) {
-                tags.push(
-                  `<span class="tag tag-token">Token x${w.tokenCount}</span>`
-                );
-              }
-              if (w.idCount > 0) {
-                tags.push(
-                  `<span class="tag tag-id">ID Pass x${w.idCount}</span>`
-                );
-              }
-              if (w.shadowCount > 0) {
-                tags.push(
-                  `<span class="tag tag-shadow">Shadows x${w.shadowCount}</span>`
-                );
-              }
+      const rowsHtml = latest.winners.map(w => {
+        const icon = w.rank === 1 ? "👑" : (w.rank === 2 ? "🥈" : "🥉");
+        const label = w.rank === 1 ? "1st winner" : w.rank === 2 ? "2nd winner" : "3rd winner";
+        const shortAddr = shortenAddress(w.address);
 
-              const holdsAllThree =
-                w.tokenCount > 0 && w.idCount > 0 && w.shadowCount > 0;
-              if (holdsAllThree) {
-                tags.push(
-                  `<span class="tag tag-boost">Full shadow boost</span>`
-                );
-              } else if (
-                (w.tokenCount > 0 && w.idCount > 0) ||
-                (w.tokenCount > 0 && w.shadowCount > 0)
-              ) {
-                tags.push(`<span class="tag tag-boost">Dual boost</span>`);
-              }
+        const tags = [];
 
-              return `
-                <div class="winner-card">
-                  <div class="winner-header-line">
-                    <div class="winner-rank">
-                      <span>${icon}</span>
-                      <strong>${rankLabel}</strong>
-                    </div>
-                    <div class="winner-addr">${shorten(w.addr)}</div>
-                  </div>
-                  <div class="winner-tags">
-                    ${tags.join("")}
-                  </div>
-                </div>
-              `;
-            })
-            .join("");
+        if (w.tokenCount && w.tokenCount > 0) {
+          tags.push(`<span class="tag">Token x${w.tokenCount}</span>`);
+        }
+        if (w.idPassCount && w.idPassCount > 0) {
+          tags.push(`<span class="tag">ID Pass x${w.idPassCount}</span>`);
+        }
+        if (w.shadowsCount && w.shadowsCount > 0) {
+          tags.push(`<span class="tag">Shadows x${w.shadowsCount}</span>`);
+        }
 
-          return `
-            <div class="draw-block">
-              <div class="draw-header">
-                Round #${roundNum} · ${timeStr}
+        const hasToken = w.tokenCount && w.tokenCount > 0;
+        const hasId = w.idPassCount && w.idPassCount > 0;
+        const hasShadow = w.shadowsCount && w.shadowsCount > 0;
+
+        if (hasToken && ((hasId && hasShadow) || (hasId && !hasShadow) || (!hasId && hasShadow))) {
+          const boosts = (hasId && hasShadow) ? "Full shadow boost" : "Dual boost";
+          tags.push(`<span class="tag tag-boost">${boosts}</span>`);
+        }
+
+        return `
+          <div class="winner-row">
+            <div class="winner-main">
+              <div class="winner-rank-pill">
+                <span class="icon">${icon}</span>
+                <span>${label}</span>
               </div>
-              <div class="winner-round-grid">
-                ${cards}
+              <div class="winner-addr" title="${w.address}">
+                ${shortAddr}
+                <button class="copy-btn" data-address="${w.address}">Copy</button>
               </div>
             </div>
-          `;
-        })
-        .join("");
+            <div class="winner-tags">
+              ${tags.join("")}
+            </div>
+          </div>
+        `;
+      }).join("");
 
-      container.innerHTML = blocks;
+      container.innerHTML = rowsHtml;
     }
 
-    /************************************************************
-     * HOLDER SCANNING
-     ************************************************************/
-    async function scanCollection(colConfig) {
-      const contract = new ethers.Contract(
-        colConfig.address,
-        ERC721_ABI,
-        provider
-      );
-      const map = new Map();
+    function renderHistory(draws) {
+      const tbody = document.getElementById("historyBody");
+      const metaEl = document.getElementById("historyMeta");
 
-      for (let tokenId = 0; tokenId <= colConfig.maxTokenId; tokenId++) {
-        try {
-          const owner = await contract.ownerOf(tokenId);
-          if (!owner || owner === ethers.ZeroAddress) continue;
-          const key = owner.toLowerCase();
-          map.set(key, (map.get(key) || 0) + 1);
-        } catch (err) {
-          // probably not minted; ignore
-        }
+      if (!draws || !draws.length) {
+        tbody.innerHTML = "";
+        metaEl.textContent = "No draws recorded yet.";
+        return;
       }
 
-      holderMaps[colConfig.key] = map;
+      metaEl.textContent = `Total rounds recorded: ${draws.length}`;
+
+      // Show newest at top
+      const rowsHtml = [...draws].reverse().map(d => {
+        const first = d.winners?.find(w => w.rank === 1);
+        const second = d.winners?.find(w => w.rank === 2);
+        const third = d.winners?.find(w => w.rank === 3);
+
+        function fmtWinner(w) {
+          if (!w) return "-";
+          return shortenAddress(w.address || "-");
+        }
+
+        return `
+          <tr>
+            <td class="history-round">#${d.round}</td>
+            <td>${formatUTC(d.executedAt)}</td>
+            <td class="history-winners">
+              1st: ${fmtWinner(first)} |
+              2nd: ${fmtWinner(second)} |
+              3rd: ${fmtWinner(third)}
+            </td>
+          </tr>
+        `;
+      }).join("");
+
+      tbody.innerHTML = rowsHtml;
     }
 
-    async function refreshAllHolders() {
-      if (scanning) return;
-      scanning = true;
+    function applyStateFromServer(payload) {
+      if (!payload || !payload.ok) {
+        setText("drawStatus", "Failed to sync raffle state from server.");
+        return;
+      }
+
+      const { nextDrawTimestamp: ts, draws } = payload;
+
+      if (typeof ts === "number" && ts > 0) {
+        nextDrawTimestamp = ts;
+        startCountdown();
+      }
+
+      renderLatestDraw(draws);
+      renderHistory(draws);
+
+      const now = new Date();
       setText(
-        "holderStatus",
-        "Holder index: scanning Erebus: Token, ID Pass, and Shadows on Monad testnet…"
+        "drawStatus",
+        `Next raffle pulls a snapshot when this timer hits zero. Last sync: ${now.toUTCString()}`
       );
+    }
+
+    function startCountdown() {
+      if (!nextDrawTimestamp) {
+        setText("cd-hours", "--");
+        setText("cd-minutes", "--");
+        setText("cd-seconds", "--");
+        return;
+      }
+
+      if (countdownInterval) clearInterval(countdownInterval);
+
+      const tick = () => {
+        const now = Date.now();
+        const diff = nextDrawTimestamp - now;
+
+        if (diff <= 0) {
+          setText("cd-hours", "00");
+          setText("cd-minutes", "00");
+          setText("cd-seconds", "00");
+
+          if (!drawInFlight) {
+            triggerDraw();
+          }
+          return;
+        }
+
+        const totalSeconds = Math.floor(diff / 1000);
+        const hours = Math.floor(totalSeconds / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const seconds = totalSeconds % 60;
+
+        setText("cd-hours", String(hours).padStart(2, "0"));
+        setText("cd-minutes", String(minutes).padStart(2, "0"));
+        setText("cd-seconds", String(seconds).padStart(2, "0"));
+
+        if (hours === 0 && minutes < 10) {
+          setText(
+            "timerNote",
+            "We’re less than 10 minutes from the next raffle. Any last-minute shadow moves will be tracked."
+          );
+        } else {
+          setText(
+            "timerNote",
+            "This timer is global. Every wallet sees the same countdown and the same winners."
+          );
+        }
+      };
+
+      tick();
+      countdownInterval = setInterval(tick, 1000);
+    }
+
+    async function fetchState() {
+      try {
+        setText("drawStatus", "Syncing raffle state from Erebus backend…");
+        const res = await fetch(API_STATE_URL, { cache: "no-store" });
+        const data = await res.json();
+        applyStateFromServer(data);
+      } catch (err) {
+        console.error("Error fetching state:", err);
+        setText(
+          "drawStatus",
+          "Error fetching raffle state. Check console / network and refresh."
+        );
+      }
+    }
+
+    async function triggerDraw() {
+      drawInFlight = true;
+      setText("drawStatus", "Timer hit zero. Freezing snapshot & running the draw on the server…");
 
       try {
-        await scanCollection(COLLECTIONS.token);
-        await scanCollection(COLLECTIONS.idpass);
-        await scanCollection(COLLECTIONS.shadows);
+        const res = await fetch(API_DRAW_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ action: "runDraw" })
+        });
 
-        setText(
-          "holderStatus",
-          "Holder index: fresh snapshot loaded. Next refresh in ~5 minutes."
-        );
+        const data = await res.json();
+        applyStateFromServer(data);
       } catch (err) {
-        console.error("Error scanning holders", err);
+        console.error("Error running draw:", err);
         setText(
-          "holderStatus",
-          "Holder index: error reading from RPC. Check console or try again shortly."
+          "drawStatus",
+          "Failed to run draw on the server. The backend will retry when available."
         );
       } finally {
-        scanning = false;
+        drawInFlight = false;
       }
     }
 
-    /************************************************************
-     * DRAW LOGIC
-     ************************************************************/
-    function pickWinnersAndRecord() {
-      const tokenMap = holderMaps.token;
-      const eligible = Array.from(tokenMap.keys());
+    // Handle copy buttons (event delegation)
+    document.addEventListener("click", (ev) => {
+      const btn = ev.target.closest(".copy-btn");
+      if (!btn) return;
 
-      if (eligible.length === 0) {
-        setText(
-          "winnersMeta",
-          "No Erebus: Token holders detected at draw time. No winners this cycle."
-        );
-        return;
-      }
+      const addr = btn.getAttribute("data-address");
+      if (!addr) return;
 
-      // pick 3 unique addresses randomly
-      const pool = [...eligible];
-      const selected = [];
-      for (let i = 0; i < 3 && pool.length > 0; i++) {
-        const idx = randomInt(pool.length);
-        const addr = pool.splice(idx, 1)[0];
-        selected.push(addr);
-      }
-
-      const idMap = holderMaps.idpass;
-      const shadowMap = holderMaps.shadows;
-
-      const winnersData = selected.map((addr) => {
-        const tokenCount = tokenMap.get(addr) || 0;
-        const idCount = idMap.get(addr) || 0;
-        const shadowCount = shadowMap.get(addr) || 0;
-        return { addr, tokenCount, idCount, shadowCount };
-      });
-
-      const record = {
-        timestamp: Date.now(),
-        winners: winnersData
-      };
-      drawHistory.push(record);
-      saveHistory();
-      renderHistory();
-    }
-
-    /************************************************************
-     * COUNTDOWN
-     ************************************************************/
-    function updateCountdown() {
-      const now = Date.now();
-      const diff = nextDrawTimestamp - now;
-
-      if (diff <= 0) {
-        // Timer hit zero → run draw once, then schedule next cycle
-        setText(
-          "drawStatus",
-          "Timer hit zero. Freezing snapshot & running the draw…"
-        );
-
-        // Refresh holders, then pick winners and record them
-        refreshAllHolders()
-          .then(() => {
-            pickWinnersAndRecord();
-          })
-          .finally(() => {
-            nextDrawTimestamp = computeNextDrawTimestamp();
-          });
-
-        return;
-      }
-
-      const totalSeconds = Math.floor(diff / 1000);
-      const hours = Math.floor(totalSeconds / 3600);
-      const minutes = Math.floor((totalSeconds % 3600) / 60);
-      const seconds = totalSeconds % 60;
-
-      setText("cd-hours", String(hours).padStart(2, "0"));
-      setText("cd-minutes", String(minutes).padStart(2, "0"));
-      setText("cd-seconds", String(seconds).padStart(2, "0"));
-
-      if (hours === 0 && minutes < 10) {
-        setText(
-          "drawStatus",
-          "We’re less than 10 minutes from the next raffle. Any last-minute shadow moves will be tracked."
-        );
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(addr).then(() => {
+          btn.textContent = "Copied";
+          setTimeout(() => {
+            btn.textContent = "Copy";
+          }, 1200);
+        }).catch(() => {
+          alert("Could not copy address. You can still select it manually.");
+        });
       } else {
-        setText(
-          "drawStatus",
-          "Next raffle pulls a snapshot when this timer hits zero. Keep your Erebus: Token on-chain to stay eligible."
-        );
+        alert("Clipboard API not available. Please select and copy manually.");
       }
-    }
-
-    /************************************************************
-     * INIT
-     ************************************************************/
-    async function init() {
-      // Load previous draw history (per browser) and render it
-      drawHistory = loadHistory();
-      renderHistory();
-
-      // Set next draw timestamp based on real time (global phase)
-      nextDrawTimestamp = computeNextDrawTimestamp();
-
-      // Start countdown updates
-      updateCountdown();
-      countdownInterval = setInterval(updateCountdown, 1000);
-
-      // Initial holder scan
-      await refreshAllHolders();
-
-      // Refresh holders every 5 minutes
-      refreshInterval = setInterval(refreshAllHolders, 5 * 60 * 1000);
-    }
-
-    init().catch((err) => {
-      console.error("Init error:", err);
-      setText(
-        "holderStatus",
-        "Failed to initialize the observatory. Check console for errors."
-      );
     });
+
+    // INIT
+    fetchState();
+    // Optionally refresh state every few minutes so open tabs stay in sync
+    setInterval(fetchState, 5 * 60 * 1000);
   </script>
 </body>
 </html>
