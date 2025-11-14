@@ -970,10 +970,8 @@ function applyStateFromServer(raw) {
   startCountdown();
   renderLatestDraw(draws);
   renderHistory(draws);
-}
 
-
-  async function triggerDraw() {
+ async function triggerDraw() {
     drawInFlight = true;
     setText(
       "drawStatus",
@@ -1030,7 +1028,7 @@ function applyStateFromServer(raw) {
 
       tick();
       countdownInterval = setInterval(tick, 1000);
-    }
+    
 
     async function fetchState() {
   try {
@@ -1168,6 +1166,7 @@ function applyStateFromServer(raw) {
   </script>
 </body>
 </html>
+
 
 
 
