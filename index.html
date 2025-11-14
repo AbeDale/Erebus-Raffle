@@ -892,21 +892,35 @@
       tbody.innerHTML = rowsHtml;
     }
 
-    function applyStateFromServer(payload) {
-      if (!payload || !payload.ok) {
-        setText("drawStatus", "Failed to sync raffle state from server.");
-        return;
-      }
+function applyStateFromServer(payload) {
+  // Validate the payload we got from Supabase
+  if (!payload || !payload.next_draw_at) {
+    setText("drawStatus", "Failed to sync raffle state from server.");
+    return;
+  }
 
-      const { nextDrawTimestamp: ts, draws } = payload;
+  // Supabase returns next_draw_at (snake_case)
+  const ts = new Date(payload.next_draw_at);
+  const draws = payload.draws || [];
 
-      if (typeof ts === "number" && ts > 0) {
-        nextDrawTimestamp = ts;
-        startCountdown();
-      }
+  // Start countdown ONLY if timestamp is valid
+  if (!isNaN(ts)) {
+    nextDrawTimestamp = ts;
+    startCountdown();
+  }
 
-      renderLatestDraw(draws);
-      renderHistory(draws);
+  // Render UI history + latest draw results
+  renderLatestDraw(draws);
+  renderHistory(draws);
+
+  // Update status text
+  const now = new Date();
+  setText(
+    "drawStatus",
+    `Next raffle pulls a snapshot when this timer hits zero. Last sync: ${now.toUTCString()}`
+  );
+}
+
 
       const now = new Date();
       setText(
@@ -1036,3 +1050,4 @@
   </script>
 </body>
 </html>
+
