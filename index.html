@@ -984,19 +984,85 @@ function applyStateFromServer(payload) {
     }
 
     async function fetchState() {
-      try {
-        setText("drawStatus", "Syncing raffle state from Erebus backend…");
-        const res = await fetch(API_STATE_URL, { cache: "no-store" });
-        const data = await res.json();
-        applyStateFromServer(data);
-      } catch (err) {
-        console.error("Error fetching state:", err);
-        setText(
-          "drawStatus",
-          "Error fetching raffle state. Check console / network and refresh."
-        );
-      }
+  try {
+    // 1) Show syncing text immediately
+    setText("drawStatus", "Syncing with Erebus raffle oracle...");
+
+    // 2) Call our API (same URL as before)
+    const res = await fetch(API_STATE_URL, { cache: "no-store" });
+
+    if (!res.ok) {
+      throw new Error("HTTP " + res.status);
     }
+
+    // 3) Parse JSON and pass to handler
+    const raw = await res.json();
+    applyStateFromServer(raw);
+  } catch (err) {
+    console.error("Error fetching state:", err);
+    setText(
+      "drawStatus",
+      "Error fetching raffle state. Check console / network and refresh."
+    );
+  }
+}
+
+function applyStateFromServer(raw) {
+  console.log("Erebus state payload:", raw);
+
+  // Handle {…}, { state: {…} } or [ {…} ]
+  let payload = raw;
+  if (raw && raw.state) payload = raw.state;
+  if (Array.isArray(raw)) payload = raw[0];
+
+  if (!payload) {
+    setText("drawStatus", "Failed to sync raffle state (empty payload).");
+    return;
+  }
+
+  // Try all reasonable field names just in case
+  const iso =
+    payload.next_draw_at ||
+    payload.nextDrawAt ||
+    payload.next_draw_at_utc ||
+    payload.next_draw_time;
+
+  if (!iso) {
+    setText(
+      "drawStatus",
+      "Raffle state loaded but next_draw_at is missing. Check backend."
+    );
+    return;
+  }
+
+  const ts = Date.parse(iso);
+
+  if (!Number.isFinite(ts)) {
+    setText(
+      "drawStatus",
+      "Raffle state loaded but timestamp is invalid: " + iso
+    );
+    return;
+  }
+
+  // This is what the countdown code uses
+  nextDrawTimestamp = ts;
+
+  // Winner history – use whatever we have
+  const draws = payload.draws || payload.winners || [];
+
+  renderLatestDraw(draws);
+  renderHistory(draws);
+
+  // Actually start the countdown
+  startCountdown();
+
+  const now = new Date();
+  setText(
+    "drawStatus",
+    `Next shadow draw countdown is live. Last sync: ${now.toUTCString()}`
+  );
+}
 
     async function triggerDraw() {
       drawInFlight = true;
@@ -1053,5 +1119,6 @@ function applyStateFromServer(payload) {
   </script>
 </body>
 </html>
+
 
 
