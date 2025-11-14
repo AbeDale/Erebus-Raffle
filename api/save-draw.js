@@ -6,26 +6,18 @@ const supabase = createClient(
 );
 
 export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "POST required" });
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const { winners, timestamp } = req.body;
+  const { winners } = req.body;
 
   const { error } = await supabase
-    .from('draw_history')
-    .insert([{ winners, timestamp }]);
-
-  if (error) return res.status(500).json({ error: "Failed to save draw" });
-
-  await supabase
     .from('raffle_state')
-    .update({
-      last_winners: winners,
-      last_draw: timestamp
-    })
+    .update({ winners })
     .eq('id', 1);
+
+  if (error) return res.status(500).json({ error: "Update failed" });
 
   return res.status(200).json({ success: true });
 }
-
