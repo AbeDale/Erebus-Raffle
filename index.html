@@ -893,33 +893,36 @@
     }
 
 function applyStateFromServer(payload) {
-  // Validate the payload we got from Supabase
+  // Make sure we actually got something useful
   if (!payload || !payload.next_draw_at) {
     setText("drawStatus", "Failed to sync raffle state from server.");
     return;
   }
 
-  // Supabase returns next_draw_at (snake_case)
-  const ts = new Date(payload.next_draw_at);
-  const draws = payload.draws || [];
+  // Convert Supabase's ISO string into a numeric timestamp (ms since epoch)
+  const ts = Date.parse(payload.next_draw_at);
 
-  // Start countdown ONLY if timestamp is valid
-  if (!isNaN(ts)) {
+  // For now, treat winners as the "draws" array the UI expects
+  const draws = payload.winners || [];
+
+  // This is what the countdown code expects: a NUMBER timestamp
+  if (typeof ts === "number" && ts > 0) {
     nextDrawTimestamp = ts;
     startCountdown();
   }
 
-  // Render UI history + latest draw results
+  // Render latest draw + history (will just be empty arrays at first)
   renderLatestDraw(draws);
   renderHistory(draws);
 
-  // Update status text
+  // Update status text so we know the sync actually finished
   const now = new Date();
   setText(
     "drawStatus",
     `Next raffle pulls a snapshot when this timer hits zero. Last sync: ${now.toUTCString()}`
   );
 }
+
 
 
       const now = new Date();
@@ -1050,4 +1053,5 @@ function applyStateFromServer(payload) {
   </script>
 </body>
 </html>
+
 
