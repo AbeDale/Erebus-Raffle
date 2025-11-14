@@ -4,10 +4,7 @@
   "type": "module",
   "dependencies": {
     "@vercel/kv": "latest",
-    "ethers": "^6.13.2"
+    "ethers": "^6.13.2",
+    "@supabase/supabase-js": "^2.48.0"
   }
 }
-"dependencies": {
-  "@supabase/supabase-js": "^2.48.0"
-}
-
