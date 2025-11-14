@@ -1,0 +1,9 @@
+{
+  "name": "erebus-raffle",
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "@vercel/kv": "latest",
+    "ethers": "^6.13.2"
+  }
+}
