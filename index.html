@@ -31,6 +31,30 @@
     }
 
     /* ---------------- ANIMATED BACKGROUND ---------------- */
+    .shadow-mist {
+      position: fixed;
+      inset: -10%;
+      background:
+        radial-gradient(circle at 10% 20%, rgba(0, 0, 0, 0.75) 0, transparent 55%),
+        radial-gradient(circle at 90% 80%, rgba(0, 0, 0, 0.7) 0, transparent 60%);
+      mix-blend-mode: soft-light;
+      opacity: 0.6;
+      animation: mistDrift 38s ease-in-out infinite alternate;
+      z-index: -4;
+      pointer-events: none;
+    }
+
+    @keyframes mistDrift {
+      0% {
+        transform: translate3d(-2%, 1%, 0) scale(1.02);
+        filter: blur(6px);
+      }
+      100% {
+        transform: translate3d(3%, -2%, 0) scale(1.06);
+        filter: blur(9px);
+      }
+    }
+
     .erebus-bg {
       position: fixed;
       inset: 0;
@@ -588,6 +612,7 @@
 </head>
 
 <body>
+  <div class="shadow-mist"></div>
   <div class="erebus-bg"></div>
   <div class="smoke-ring"></div>
 
@@ -770,6 +795,7 @@
     let countdownInterval = null;
     let drawInFlight = false;
 
+    /* ---------- UTILITIES ---------- */
     function shortenAddress(addr) {
       if (!addr || addr.length < 10) return addr || "";
       return addr.slice(0, 6) + "..." + addr.slice(-4);
@@ -787,13 +813,15 @@
       if (el) el.textContent = text;
     }
 
+    /* ---------- LATEST DRAW RENDER ---------- */
     function renderLatestDraw(draws) {
       const container = document.getElementById("latestWinners");
       const metaEl = document.getElementById("latestMeta");
 
       if (!draws || !draws.length) {
         container.innerHTML = "";
-        metaEl.textContent = "No draws fired yet. First one hits when the timer reaches zero.";
+        metaEl.textContent =
+          "No draws fired yet. First one hits when the timer reaches zero.";
         return;
       }
 
@@ -805,54 +833,59 @@
         return;
       }
 
-      const rowsHtml = latest.winners.map(w => {
-        const icon = w.rank === 1 ? "👑" : (w.rank === 2 ? "🥈" : "🥉");
-        const label = w.rank === 1 ? "1st winner" : w.rank === 2 ? "2nd winner" : "3rd winner";
-        const shortAddr = shortenAddress(w.address);
+      const rowsHtml = latest.winners
+        .map((w) => {
+          const icon = w.rank === 1 ? "👑" : w.rank === 2 ? "🥈" : "🥉";
+          const label =
+            w.rank === 1 ? "1st winner" : w.rank === 2 ? "2nd winner" : "3rd winner";
+          const shortAddr = shortenAddress(w.address);
 
-        const tags = [];
+          const tags = [];
 
-        if (w.tokenCount && w.tokenCount > 0) {
-          tags.push(`<span class="tag">Token x${w.tokenCount}</span>`);
-        }
-        if (w.idPassCount && w.idPassCount > 0) {
-          tags.push(`<span class="tag">ID Pass x${w.idPassCount}</span>`);
-        }
-        if (w.shadowsCount && w.shadowsCount > 0) {
-          tags.push(`<span class="tag">Shadows x${w.shadowsCount}</span>`);
-        }
+          if (w.tokenCount && w.tokenCount > 0) {
+            tags.push(`<span class="tag">Token x${w.tokenCount}</span>`);
+          }
+          if (w.idPassCount && w.idPassCount > 0) {
+            tags.push(`<span class="tag">ID Pass x${w.idPassCount}</span>`);
+          }
+          if (w.shadowsCount && w.shadowsCount > 0) {
+            tags.push(`<span class="tag">Shadows x${w.shadowsCount}</span>`);
+          }
 
-        const hasToken = w.tokenCount && w.tokenCount > 0;
-        const hasId = w.idPassCount && w.idPassCount > 0;
-        const hasShadow = w.shadowsCount && w.shadowsCount > 0;
+          const hasToken = w.tokenCount && w.tokenCount > 0;
+          const hasId = w.idPassCount && w.idPassCount > 0;
+          const hasShadow = w.shadowsCount && w.shadowsCount > 0;
 
-        if (hasToken && ((hasId && hasShadow) || (hasId && !hasShadow) || (!hasId && hasShadow))) {
-          const boosts = (hasId && hasShadow) ? "Full shadow boost" : "Dual boost";
-          tags.push(`<span class="tag tag-boost">${boosts}</span>`);
-        }
+          if (hasToken && (hasId || hasShadow)) {
+            const boosts =
+              hasId && hasShadow ? "Full shadow boost" : "Dual boost";
+            tags.push(`<span class="tag tag-boost">${boosts}</span>`);
+          }
 
-        return `
-          <div class="winner-row">
-            <div class="winner-main">
-              <div class="winner-rank-pill">
-                <span class="icon">${icon}</span>
-                <span>${label}</span>
+          return `
+            <div class="winner-row">
+              <div class="winner-main">
+                <div class="winner-rank-pill">
+                  <span class="icon">${icon}</span>
+                  <span>${label}</span>
+                </div>
+                <div class="winner-addr" title="${w.address}">
+                  ${shortAddr}
+                  <button class="copy-btn" data-address="${w.address}">Copy</button>
+                </div>
               </div>
-              <div class="winner-addr" title="${w.address}">
-                ${shortAddr}
-                <button class="copy-btn" data-address="${w.address}">Copy</button>
+              <div class="winner-tags">
+                ${tags.join("")}
               </div>
             </div>
-            <div class="winner-tags">
-              ${tags.join("")}
-            </div>
-          </div>
-        `;
-      }).join("");
+          `;
+        })
+        .join("");
 
       container.innerHTML = rowsHtml;
     }
 
+    /* ---------- HISTORY RENDER ---------- */
     function renderHistory(draws) {
       const tbody = document.getElementById("historyBody");
       const metaEl = document.getElementById("historyMeta");
@@ -865,144 +898,69 @@
 
       metaEl.textContent = `Total rounds recorded: ${draws.length}`;
 
-      // Show newest at top
-      const rowsHtml = [...draws].reverse().map(d => {
-        const first = d.winners?.find(w => w.rank === 1);
-        const second = d.winners?.find(w => w.rank === 2);
-        const third = d.winners?.find(w => w.rank === 3);
+      const rowsHtml = [...draws].reverse()
+        .map((d) => {
+          const first = d.winners?.find((w) => w.rank === 1);
+          const second = d.winners?.find((w) => w.rank === 2);
+          const third = d.winners?.find((w) => w.rank === 3);
 
-        function fmtWinner(w) {
-          if (!w) return "-";
-          return shortenAddress(w.address || "-");
-        }
+          function fmtWinner(w) {
+            if (!w) return "-";
+            return shortenAddress(w.address || "-");
+          }
 
-        return `
-          <tr>
-            <td class="history-round">#${d.round}</td>
-            <td>${formatUTC(d.executedAt)}</td>
-            <td class="history-winners">
-              1st: ${fmtWinner(first)} |
-              2nd: ${fmtWinner(second)} |
-              3rd: ${fmtWinner(third)}
-            </td>
-          </tr>
-        `;
-      }).join("");
+          return `
+            <tr>
+              <td class="history-round">#${d.round}</td>
+              <td>${formatUTC(d.executedAt)}</td>
+              <td class="history-winners">
+                1st: ${fmtWinner(first)} |
+                2nd: ${fmtWinner(second)} |
+                3rd: ${fmtWinner(third)}
+              </td>
+            </tr>
+          `;
+        })
+        .join("");
 
       tbody.innerHTML = rowsHtml;
     }
 
-// --- sync state from Erebus backend ---------------------------------------
-
-async function fetchState() {
-  try {
-    // show syncing text immediately
-    setText("drawStatus", "Syncing with Erebus raffle oracle...");
-
-    // call our API
-    const res = await fetch(API_STATE_URL, { cache: "no-store" });
-
-    if (!res.ok) {
-      throw new Error("HTTP " + res.status);
-    }
-
-    const raw = await res.json();
-    applyStateFromServer(raw);
-  } catch (err) {
-    console.error("Error fetching state:", err);
-    setText(
-      "drawStatus",
-      "Error fetching raffle state. Check console / network and refresh."
-    );
-  }
-}
-
-function applyStateFromServer(raw) {
-  console.log("raffle state payload", raw);
-
-  // raw can be: { ... }, { state: {...} } or [ { ... } ]
-  let payload = raw;
-
-  if (Array.isArray(raw)) {
-    payload = raw[0];
-  } else if (raw && raw.state) {
-    payload = raw.state;
-  }
-
-  if (!payload) {
-    setText("drawStatus", "Failed to sync raffle state (empty payload).");
-    return;
-  }
-
-  // --- figure out which field has the timestamp --------------------------
-  const iso =
-    payload.next_draw_at ||    // Supabase column
-    payload.nextDrawAt ||      // camelCase variant
-    payload.next_draw_time;    // fallback name
-
-  if (!iso) {
-    setText(
-      "drawStatus",
-      "Raffle state loaded but next_draw_at is missing. Check backend."
-    );
-    return;
-  }
-
-  const ts = Date.parse(iso);
-
-  if (Number.isNaN(ts)) {
-    setText(
-      "drawStatus",
-      "Raffle state loaded but timestamp is invalid: " + iso
-    );
-    return;
-  }
-
-  // this is what the countdown uses
-  nextDrawTimestamp = ts;
-
-  // optional extra data from backend
-  draws   = payload.draws   || [];
-  winners = payload.winners || [];
-
-  setText("drawStatus", "Raffle state synced from Erebus backend.");
-
-  startCountdown();
-  renderLatestDraw(draws);
-  renderHistory(draws);
-
- async function triggerDraw() {
-    drawInFlight = true;
-    setText(
-      "drawStatus",
-      "Timer hit zero. Freezing snapshot & running the draw on the server…"
-    );
-
-    try {
-      const res = await fetch(API_DRAW_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        }
-      });
-
-      if (!res.ok) {
-        throw new Error("HTTP " + res.status);
+    /* ---------- COUNTDOWN ---------- */
+    function startCountdown() {
+      if (!nextDrawTimestamp) {
+        console.warn("startCountdown called but nextDrawTimestamp missing");
+        return;
       }
 
-      const raw = await res.json();
-      applyStateFromServer(raw);
-    } catch (err) {
-      console.error("Error triggering draw:", err);
-      setText(
-        "drawStatus",
-        "Error triggering draw. Check console / network and refresh."
-      );
-    } finally {
-      drawInFlight = false;
-    }
-  }
+      if (countdownInterval) {
+        clearInterval(countdownInterval);
+        countdownInterval = null;
+      }
 
+      function tick() {
+        const now = Date.now();
+        const diff = nextDrawTimestamp - now;
+
+        if (diff <= 0) {
+          setText("cd-hours", "00");
+          setText("cd-minutes", "00");
+          setText("cd-seconds", "00");
+
+          clearInterval(countdownInterval);
+          countdownInterval = null;
+
+          setText(
+            "timerNote",
+            "Snapshot taken. Waiting for the backend to finalize the draw…"
+          );
+
+          if (!drawInFlight) {
+            console.log("Countdown reached zero. Triggering draw…");
+            triggerDraw();
+          }
+          return;
+        }
 
         const totalSeconds = Math.floor(diff / 1000);
         const hours = Math.floor(totalSeconds / 3600);
@@ -1024,96 +982,110 @@ function applyStateFromServer(raw) {
             "This timer is global. Every wallet sees the same countdown and the same winners."
           );
         }
-      };
+      }
 
       tick();
       countdownInterval = setInterval(tick, 1000);
-    
-
-    async function fetchState() {
-  try {
-    // 1) Show syncing text immediately
-    setText("drawStatus", "Syncing with Erebus raffle oracle...");
-
-    // 2) Call our API (same URL as before)
-    const res = await fetch(API_STATE_URL, { cache: "no-store" });
-
-    if (!res.ok) {
-      throw new Error("HTTP " + res.status);
     }
 
-    // 3) Parse JSON and pass to handler
-    const raw = await res.json();
-    applyStateFromServer(raw);
-  } catch (err) {
-    console.error("Error fetching state:", err);
-    setText(
-      "drawStatus",
-      "Error fetching raffle state. Check console / network and refresh."
-    );
-  }
-}
+    /* ---------- STATE SYNC ---------- */
+    async function fetchState() {
+      try {
+        setText(
+          "drawStatus",
+          "Syncing with Erebus raffle oracle..."
+        );
 
-function applyStateFromServer(raw) {
-  console.log("Erebus state payload:", raw);
+        const res = await fetch(API_STATE_URL, { cache: "no-store" });
 
-  // Handle {…}, { state: {…} } or [ {…} ]
-  let payload = raw;
-  if (raw && raw.state) payload = raw.state;
-  if (Array.isArray(raw)) payload = raw[0];
+        if (!res.ok) {
+          throw new Error("HTTP " + res.status);
+        }
 
-  if (!payload) {
-    setText("drawStatus", "Failed to sync raffle state (empty payload).");
-    return;
-  }
+        const raw = await res.json();
+        applyStateFromServer(raw);
+      } catch (err) {
+        console.error("Error fetching state:", err);
+        setText(
+          "drawStatus",
+          "Error fetching raffle state. Check console / network and refresh."
+        );
+      }
+    }
 
-  // Try all reasonable field names just in case
-  const iso =
-    payload.next_draw_at ||
-    payload.nextDrawAt ||
-    payload.next_draw_at_utc ||
-    payload.next_draw_time;
+    function applyStateFromServer(raw) {
+      console.log("Erebus state payload:", raw);
 
-  if (!iso) {
-    setText(
-      "drawStatus",
-      "Raffle state loaded but next_draw_at is missing. Check backend."
-    );
-    return;
-  }
+      // Accept {…}, { state: {…} }, or [ {…} ]
+      let payload = raw;
+      if (raw && raw.state) payload = raw.state;
+      if (Array.isArray(payload)) payload = payload[0];
 
-  const ts = Date.parse(iso);
+      if (!payload) {
+        setText(
+          "drawStatus",
+          "Failed to sync raffle state (empty payload)."
+        );
+        return;
+      }
 
-  if (!Number.isFinite(ts)) {
-    setText(
-      "drawStatus",
-      "Raffle state loaded but timestamp is invalid: " + iso
-    );
-    return;
-  }
+      // Accept multiple possible timestamp field names
+      const iso =
+        payload.next_draw_at ||
+        payload.nextDrawAt ||
+        payload.next_draw_at_utc ||
+        payload.next_draw_time ||
+        payload.nextDrawTimestamp;
 
-  // This is what the countdown code uses
-  nextDrawTimestamp = ts;
+      if (!iso) {
+        setText(
+          "drawStatus",
+          "Raffle state loaded but next_draw_at is missing. Check backend."
+        );
+        return;
+      }
 
-  // Winner history – use whatever we have
-  const draws = payload.draws || payload.winners || [];
+      const ts = Date.parse(iso);
 
-  renderLatestDraw(draws);
-  renderHistory(draws);
+      if (!Number.isFinite(ts)) {
+        setText(
+          "drawStatus",
+          "Raffle state loaded but timestamp is invalid: " + iso
+        );
+        return;
+      }
 
-  // Actually start the countdown
-  startCountdown();
+      nextDrawTimestamp = ts;
 
-  const now = new Date();
-  setText(
-    "drawStatus",
-    `Next shadow draw countdown is live. Last sync: ${now.toUTCString()}`
-  );
-}
+      const draws =
+        payload.draws ||
+        payload.history ||
+        payload.winners ||
+        [];
 
+      renderLatestDraw(draws);
+      renderHistory(draws);
+      startCountdown();
+
+      const now = new Date();
+      setText(
+        "drawStatus",
+        `Next shadow draw countdown is live. Last sync: ${now.toUTCString()}`
+      );
+    }
+
+    /* ---------- TRIGGER DRAW ---------- */
     async function triggerDraw() {
+      if (drawInFlight) {
+        console.log("Draw already in flight; skipping.");
+        return;
+      }
+
       drawInFlight = true;
-      setText("drawStatus", "Timer hit zero. Freezing snapshot & running the draw on the server…");
+      setText(
+        "drawStatus",
+        "Timer hit zero. Freezing snapshot & running the draw on the server…"
+      );
 
       try {
         const res = await fetch(API_DRAW_URL, {
@@ -1123,6 +1095,10 @@ function applyStateFromServer(raw) {
           },
           body: JSON.stringify({ action: "runDraw" })
         });
+
+        if (!res.ok) {
+          throw new Error("HTTP " + res.status);
+        }
 
         const data = await res.json();
         applyStateFromServer(data);
@@ -1137,7 +1113,7 @@ function applyStateFromServer(raw) {
       }
     }
 
-    // Handle copy buttons (event delegation)
+    /* ---------- COPY BUTTONS ---------- */
     document.addEventListener("click", (ev) => {
       const btn = ev.target.closest(".copy-btn");
       if (!btn) return;
@@ -1146,29 +1122,26 @@ function applyStateFromServer(raw) {
       if (!addr) return;
 
       if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(addr).then(() => {
-          btn.textContent = "Copied";
-          setTimeout(() => {
-            btn.textContent = "Copy";
-          }, 1200);
-        }).catch(() => {
-          alert("Could not copy address. You can still select it manually.");
-        });
+        navigator.clipboard
+          .writeText(addr)
+          .then(() => {
+            btn.textContent = "Copied";
+            setTimeout(() => {
+              btn.textContent = "Copy";
+            }, 1200);
+          })
+          .catch(() => {
+            alert("Could not copy address. You can still select it manually.");
+          });
       } else {
         alert("Clipboard API not available. Please select and copy manually.");
       }
     });
 
-    // INIT
+    /* ---------- INIT ---------- */
     fetchState();
-    // Optionally refresh state every few minutes so open tabs stay in sync
+    // keep open tabs roughly in sync
     setInterval(fetchState, 5 * 60 * 1000);
   </script>
 </body>
 </html>
-
-
-
-
-
-
