@@ -1,319 +1,1079 @@
-<script>
-(() => {
-  "use strict";
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Erebus Raffle Observatory</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-  const API_STATE_URL = "/api/get-state";
-  const DRAW_PERIOD_MS = 12 * 60 * 60 * 1000; // 12 hours
-
-  let nextDrawTimestamp = null;
-  let countdownInterval = null;
-  let draws = [];
-
-  function shortenAddress(addr) {
-    if (!addr || typeof addr !== "string") return addr || "";
-    if (addr.length <= 10) return addr;
-    return addr.slice(0, 6) + "..." + addr.slice(-4);
-  }
-
-  function formatUTC(iso) {
-    if (!iso) return "-";
-    const d = new Date(iso);
-    if (Number.isNaN(d.getTime())) return iso;
-    return d.toUTCString();
-  }
-
-  function setText(id, text) {
-    const el = document.getElementById(id);
-    if (el) el.textContent = text;
-  }
-
-  function renderLatestDraw(list) {
-    const container = document.getElementById("latestWinners");
-    const metaEl = document.getElementById("latestMeta");
-    if (!container || !metaEl) return;
-
-    if (!list || !list.length) {
-      container.innerHTML = "";
-      metaEl.textContent =
-        "No draws fired yet. First one hits when the timer reaches zero.";
-      return;
+  <style>
+    /* ---------------- RESET ---------------- */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
     }
 
-    const latest = list[list.length - 1] || {};
-    metaEl.textContent =
-      "Round #" +
-      (latest.round ?? list.length) +
-      " · " +
-      formatUTC(latest.executedAt);
-
-    const winnersArr = Array.isArray(latest.winners) ? latest.winners : [];
-
-    if (!winnersArr.length) {
-      container.innerHTML =
-        "<div>No winners recorded for this round yet.</div>";
-      return;
+    html, body {
+      height: 100%;
     }
 
-    const rowsHtml = winnersArr
-      .map((w) => {
-        const rank = w.rank ?? 0;
-        const icon = rank === 1 ? "👑" : rank === 2 ? "🥈" : "🥉";
-        const label =
-          rank === 1 ? "1st winner" : rank === 2 ? "2nd winner" : "3rd winner";
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont,
+        "SF Pro Text", "Segoe UI", sans-serif;
+      color: #f7f3ff;
+      background: #050008;
+      overflow-x: hidden;
+    }
 
-        const tags = [];
-        if (w.tokenCount > 0) tags.push(`<span class="tag">Token x${w.tokenCount}</span>`);
-        if (w.idPassCount > 0) tags.push(`<span class="tag">ID Pass x${w.idPassCount}</span>`);
-        if (w.shadowsCount > 0) tags.push(`<span class="tag">Shadows x${w.shadowsCount}</span>`);
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
 
-        const hasToken = w.tokenCount > 0;
-        const hasId = w.idPassCount > 0;
-        const hasShadow = w.shadowsCount > 0;
+    /* ---------------- ANIMATED BACKGROUND ---------------- */
+    .erebus-bg {
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(circle at 10% 5%, rgba(196, 77, 255, 0.32) 0, transparent 55%),
+        radial-gradient(circle at 85% 85%, rgba(0, 209, 255, 0.35) 0, transparent 55%),
+        radial-gradient(circle at 30% 80%, rgba(255, 56, 190, 0.19) 0, transparent 60%),
+        radial-gradient(circle at 50% 50%, #050008 0, #170019 40%, #010004 100%);
+      animation: bgBreath 14s ease-in-out infinite alternate;
+      z-index: -3;
+    }
 
-        if (hasToken && (hasId || hasShadow)) {
-          const boosts = hasId && hasShadow ? "Full shadow boost" : "Dual boost";
-          tags.push(`<span class="tag tag-boost">${boosts}</span>`);
-        }
+    @keyframes bgBreath {
+      0% {
+        filter: blur(0px) brightness(1);
+        transform: scale(1.02);
+      }
+      100% {
+        filter: blur(1px) brightness(1.06);
+        transform: scale(1.05);
+      }
+    }
 
-        const addr = w.address || "-";
+    .smoke-ring {
+      position: fixed;
+      inset: 0;
+      margin: auto;
+      width: 70vmin;
+      height: 70vmin;
+      border-radius: 50%;
+      background:
+        radial-gradient(circle at 30% 0%, rgba(255, 255, 255, 0.15), transparent 60%),
+        radial-gradient(circle at 75% 100%, rgba(122, 56, 255, 0.3), transparent 60%);
+      mix-blend-mode: screen;
+      opacity: 0.18;
+      filter: blur(6px);
+      animation: smokeSpin 26s linear infinite;
+      pointer-events: none;
+      z-index: -2;
+    }
 
-        return `
-          <div class="winner-row">
-            <div class="winner-main">
-              <div class="winner-rank-pill">
-                <span class="icon">${icon}</span>
-                <span>${label}</span>
-              </div>
-              <div class="winner-addr" title="${addr}">
-                ${shortenAddress(addr)}
-                <button class="copy-btn" data-address="${addr}">Copy</button>
-              </div>
-            </div>
-            <div class="winner-tags">
-              ${tags.join("")}
+    @keyframes smokeSpin {
+      0% { transform: rotate(0deg) scale(1); }
+      100% { transform: rotate(360deg) scale(1.08); }
+    }
+
+    /* ---------------- LAYOUT ---------------- */
+    .page {
+      min-height: 100%;
+      position: relative;
+      padding: 24px 18px 40px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    @media (min-width: 960px) {
+      .page {
+        padding-inline: 48px;
+      }
+    }
+
+    .top-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 24px;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .brand-logo {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background:
+        radial-gradient(circle at 20% 0%, rgba(255, 255, 255, 0.85), transparent 55%),
+        #050008;
+      box-shadow:
+        0 0 22px rgba(210, 143, 255, 0.9),
+        0 0 60px rgba(54, 0, 119, 0.95);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .brand-logo img {
+      width: 90%;
+      height: 90%;
+      object-fit: contain;
+    }
+
+    .brand-title h1 {
+      font-size: 1.8rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      text-shadow:
+        0 0 10px rgba(200, 160, 255, 0.9),
+        0 0 20px rgba(120, 80, 255, 0.8);
+    }
+
+    .brand-title p {
+      margin-top: 4px;
+      font-size: 0.86rem;
+      opacity: 0.85;
+      max-width: 520px;
+    }
+
+    .top-right {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      align-items: flex-end;
+      min-width: 210px;
+    }
+
+    .pill {
+      font-size: 0.75rem;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(16, 5, 35, 0.85);
+      border: 1px solid rgba(199, 147, 255, 0.7);
+      box-shadow: 0 0 10px rgba(145, 110, 255, 0.55);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .pill span.highlight {
+      color: #ffe6a6;
+      font-weight: 500;
+    }
+
+    .pill-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #4ee6ff;
+      box-shadow: 0 0 10px rgba(78, 230, 255, 0.9);
+    }
+
+    /* -------- main layout: left (timer) + middle (rules) + right (art) ------ */
+    .hero-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.15fr) minmax(0, 1.1fr) minmax(0, 0.9fr);
+      gap: 24px;
+      align-items: stretch;
+    }
+
+    @media (max-width: 1080px) {
+      .hero-grid {
+        grid-template-columns: minmax(0, 1fr);
+      }
+    }
+
+    .card-glass {
+      position: relative;
+      border-radius: 24px;
+      padding: 22px 20px;
+      background:
+        radial-gradient(circle at top, rgba(122, 88, 255, 0.25), rgba(7, 0, 18, 0.95));
+      border: 1px solid rgba(193, 140, 255, 0.9);
+      box-shadow:
+        0 30px 80px rgba(0, 0, 0, 0.95),
+        0 0 40px rgba(158, 110, 255, 0.7);
+      overflow: hidden;
+    }
+
+    .card-glass::before {
+      content: "";
+      position: absolute;
+      inset: -30%;
+      background:
+        radial-gradient(circle at 20% 0%, rgba(255, 255, 255, 0.15), transparent 50%);
+      opacity: 0;
+      transition: opacity 0.4s ease;
+      pointer-events: none;
+    }
+
+    .card-glass:hover::before {
+      opacity: 0.7;
+    }
+
+    .card-title {
+      font-size: 0.9rem;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      opacity: 0.8;
+    }
+
+    .countdown-display {
+      margin-top: 18px;
+      display: flex;
+      gap: 12px;
+    }
+
+    .time-block {
+      flex: 1;
+      padding: 12px 10px 10px;
+      border-radius: 18px;
+      background: radial-gradient(circle at top, #1b0628, #070011);
+      border: 1px solid rgba(170, 130, 255, 0.75);
+      text-align: center;
+      box-shadow:
+        inset 0 0 20px rgba(0, 0, 0, 0.7),
+        0 0 18px rgba(140, 95, 255, 0.7);
+    }
+
+    .time-value {
+      font-size: 1.8rem;
+      font-weight: 600;
+      text-shadow:
+        0 0 12px rgba(255, 219, 255, 0.9),
+        0 0 22px rgba(200, 150, 255, 0.9);
+    }
+
+    .time-label {
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      opacity: 0.8;
+    }
+
+    .draw-status {
+      margin-top: 14px;
+      font-size: 0.78rem;
+      opacity: 0.88;
+    }
+
+    .draw-status span {
+      color: #ffe099;
+      font-weight: 500;
+    }
+
+    .timer-note {
+      margin-top: 8px;
+      font-size: 0.72rem;
+      opacity: 0.7;
+    }
+
+    /* rules card */
+    .rules-list {
+      margin-top: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      font-size: 0.8rem;
+      opacity: 0.9;
+    }
+
+    .rules-list li {
+      list-style: none;
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+    }
+
+    .rules-badge {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 30% 0%, #ffeefc, #ff9ae5);
+      box-shadow:
+        0 0 10px rgba(255, 139, 229, 0.9),
+        0 0 14px rgba(140, 0, 95, 0.9);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8rem;
+      color: #28001a;
+      flex-shrink: 0;
+    }
+
+    .rules-label-strong {
+      color: #ffe8b4;
+      font-weight: 500;
+    }
+
+    /* prize tiers */
+    .prize-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 16px;
+      font-size: 0.78rem;
+    }
+
+    .prize-tier {
+      flex: 1 1 100px;
+      padding: 8px 10px;
+      border-radius: 14px;
+      background: radial-gradient(circle at top, #190725, #050009);
+      border: 1px solid rgba(140, 100, 255, 0.8);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .prize-icon {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background:
+        radial-gradient(circle at 15% 0%, #fff5df, #ffd675);
+      box-shadow:
+        0 0 15px rgba(255, 219, 128, 0.95),
+        0 0 30px rgba(110, 60, 0, 0.9);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.9rem;
+      color: #4a2600;
+    }
+
+    .prize-tier strong {
+      display: block;
+      font-size: 0.8rem;
+    }
+
+    .prize-tier span {
+      font-size: 0.74rem;
+      opacity: 0.85;
+    }
+
+    /* art card */
+    .art-card {
+      position: relative;
+      border-radius: 26px;
+      overflow: hidden;
+      background: radial-gradient(circle at 30% 0%, #fb3fff, #050008 48%);
+      box-shadow:
+        0 40px 100px rgba(0, 0, 0, 0.9),
+        0 0 46px rgba(171, 112, 255, 0.95);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+
+    .art-card-inner {
+      position: relative;
+      max-width: 260px;
+      width: 100%;
+      border-radius: 22px;
+      overflow: hidden;
+      background: radial-gradient(circle at 30% 0%, #ff3bfd, #050008 45%);
+      border: 1px solid rgba(243, 204, 255, 0.8);
+      filter: drop-shadow(0 30px 70px rgba(0, 0, 0, 0.9));
+      animation: artFloat 7s ease-in-out infinite alternate;
+    }
+
+    .art-card-inner img {
+      width: 100%;
+      height: auto;
+      display: block;
+      object-fit: cover;
+    }
+
+    .art-glow {
+      position: absolute;
+      inset: 8%;
+      border-radius: inherit;
+      background:
+        radial-gradient(ellipse at bottom, rgba(0, 208, 255, 0.4), transparent 55%);
+      mix-blend-mode: screen;
+      opacity: 0.8;
+      filter: blur(4px);
+      pointer-events: none;
+    }
+
+    @keyframes artFloat {
+      0% {
+        transform: translateY(2px) scale(1.01) rotate(-0.3deg);
+      }
+      100% {
+        transform: translateY(-9px) scale(1.03) rotate(0.3deg);
+      }
+    }
+
+    /* ---------------- LATEST DRAW + HISTORY ---------------- */
+    .results-wrapper {
+      margin-top: 26px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .results-card {
+      border-radius: 18px;
+      padding: 14px 16px;
+      background: radial-gradient(circle at top, #150624, #050009);
+      border: 1px solid rgba(160, 120, 255, 0.9);
+      box-shadow:
+        0 24px 70px rgba(0, 0, 0, 0.95),
+        0 0 24px rgba(130, 100, 255, 0.85);
+      font-size: 0.78rem;
+    }
+
+    .results-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .results-header h2 {
+      font-size: 0.92rem;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+    }
+
+    .results-header span {
+      font-size: 0.72rem;
+      opacity: 0.8;
+    }
+
+    .winner-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 6px 0;
+      border-top: 1px solid rgba(110, 80, 200, 0.3);
+      font-size: 0.78rem;
+    }
+
+    .winner-main {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .winner-rank-pill {
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: rgba(40, 12, 96, 0.95);
+      border: 1px solid rgba(230, 200, 255, 0.9);
+      font-size: 0.7rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .winner-rank-pill span.icon {
+      font-size: 0.9rem;
+    }
+
+    .winner-addr {
+      font-family: "SF Mono", ui-monospace, Menlo, Monaco, Consolas,
+        "Liberation Mono", "Courier New", monospace;
+      font-size: 0.74rem;
+      opacity: 0.92;
+    }
+
+    .winner-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      font-size: 0.68rem;
+      justify-content: flex-end;
+    }
+
+    .tag {
+      padding: 2px 6px;
+      border-radius: 999px;
+      background: rgba(40, 12, 96, 0.95);
+      border: 1px solid rgba(178, 142, 255, 0.9);
+    }
+
+    .tag-boost {
+      background: rgba(30, 105, 45, 0.95);
+      border-color: rgba(121, 225, 152, 0.95);
+      color: #e9ffe9;
+    }
+
+    .copy-btn {
+      padding: 2px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(180, 150, 255, 0.85);
+      background: rgba(15, 5, 40, 0.9);
+      font-size: 0.7rem;
+      cursor: pointer;
+      margin-left: 6px;
+    }
+
+    .copy-btn:active {
+      transform: scale(0.96);
+    }
+
+    /* history */
+    .history-table-wrapper {
+      margin-top: 6px;
+      max-height: 260px;
+      overflow-y: auto;
+      border-radius: 12px;
+      border: 1px solid rgba(96, 70, 190, 0.7);
+    }
+
+    table.history-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.74rem;
+    }
+
+    .history-table th,
+    .history-table td {
+      padding: 4px 6px;
+      text-align: left;
+    }
+
+    .history-table th {
+      position: sticky;
+      top: 0;
+      background: rgba(14, 5, 40, 0.98);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      font-size: 0.7rem;
+      opacity: 0.8;
+      z-index: 1;
+    }
+
+    .history-table tr:nth-child(odd) td {
+      background: rgba(13, 4, 40, 0.85);
+    }
+
+    .history-table tr:nth-child(even) td {
+      background: rgba(7, 2, 24, 0.95);
+    }
+
+    .history-round {
+      font-weight: 600;
+      opacity: 0.9;
+    }
+
+    .history-winners {
+      font-family: "SF Mono", ui-monospace, Menlo, Monaco, Consolas,
+        "Liberation Mono", "Courier New", monospace;
+      font-size: 0.72rem;
+    }
+
+    .footer {
+      margin-top: 18px;
+      font-size: 0.68rem;
+      opacity: 0.7;
+      text-align: center;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="erebus-bg"></div>
+  <div class="smoke-ring"></div>
+
+  <div class="page">
+    <!-- TOP BAR -->
+    <div class="top-row">
+      <div class="brand">
+        <div class="brand-logo">
+          <img src="./erebus-logo.png" alt="Erebus crest" />
+        </div>
+        <div class="brand-title">
+          <h1>EREBUS RAFFLE OBSERVATORY</h1>
+          <p>
+            Live tracker for the <strong>Erebus: ID Pass</strong>,
+            <strong>Enter the Shadows</strong>, and <strong>Erebus: Token</strong>
+            on Monad testnet. The shadows decide who climbs.
+          </p>
+        </div>
+      </div>
+
+      <div class="top-right">
+        <div class="pill">
+          <div class="pill-dot"></div>
+          <span>Network:</span>
+          <span class="highlight">Monad Testnet</span>
+        </div>
+        <div class="pill">
+          <span>Draw cadence:</span>
+          <span class="highlight">Every 12 hours</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- HERO GRID -->
+    <div class="hero-grid">
+      <!-- TIMER CARD -->
+      <div class="card-glass">
+        <div class="card-title">Next shadow draw in</div>
+
+        <div class="countdown-display" id="countdown">
+          <div class="time-block">
+            <div class="time-value" id="cd-hours">--</div>
+            <div class="time-label">Hours</div>
+          </div>
+          <div class="time-block">
+            <div class="time-value" id="cd-minutes">--</div>
+            <div class="time-label">Minutes</div>
+          </div>
+          <div class="time-block">
+            <div class="time-value" id="cd-seconds">--</div>
+            <div class="time-label">Seconds</div>
+          </div>
+        </div>
+
+        <div class="draw-status" id="drawStatus">
+          Syncing with Erebus raffle oracle…
+        </div>
+        <div class="timer-note" id="timerNote">
+          This timer is global. Every wallet sees the same countdown and the same winners.
+        </div>
+      </div>
+
+      <!-- RULES / PRIZES CARD -->
+      <div class="card-glass">
+        <div class="card-title">Eligibility & prize structure</div>
+
+        <ul class="rules-list">
+          <li>
+            <span class="rules-badge">1</span>
+            <span>
+              <span class="rules-label-strong">Erebus: Token</span> is your ticket.
+              If you don’t hold it at the moment of the draw, you’re not in.
+            </span>
+          </li>
+          <li>
+            <span class="rules-badge">2</span>
+            <span>
+              <span class="rules-label-strong">Erebus: ID Pass</span> and
+              <span class="rules-label-strong">Erebus: Enter the Shadows</span> 
+              act as shadow boosts — they increase your prize tier if you win.
+            </span>
+          </li>
+          <li>
+            <span class="rules-badge">3</span>
+            <span>
+              Draws are executed and stored on the Erebus backend every
+              <span class="rules-label-strong">12 hours</span>.
+              History is global and cannot be faked by refreshing.
+            </span>
+          </li>
+        </ul>
+
+        <div class="prize-row">
+          <div class="prize-tier">
+            <div class="prize-icon">🏆</div>
+            <div>
+              <strong>Shadow Winner</strong>
+              <span>Holds all three Erebus NFTs when selected. Maximum boost.</span>
             </div>
           </div>
-        `;
-      })
-      .join("");
+          <div class="prize-tier">
+            <div class="prize-icon">🥈</div>
+            <div>
+              <strong>Dual Flame</strong>
+              <span>Holds Erebus: Token + one other (ID Pass or Shadows).</span>
+            </div>
+          </div>
+          <div class="prize-tier">
+            <div class="prize-icon">🥉</div>
+            <div>
+              <strong>Single Ember</strong>
+              <span>Holds only Erebus: Token. Still in the darkness, still rewarded.</span>
+            </div>
+          </div>
+        </div>
+      </div>
 
-    container.innerHTML = rowsHtml;
-  }
+      <!-- ART CARD -->
+      <div class="art-card">
+        <div class="art-card-inner">
+          <div class="art-glow"></div>
+          <img src="./erebus-creature.png" alt="Erebus creature" />
+        </div>
+      </div>
+    </div>
 
-  function renderHistory(list) {
-    const tbody = document.getElementById("historyBody");
-    const metaEl = document.getElementById("historyMeta");
-    if (!tbody || !metaEl) return;
+    <!-- LATEST RESULTS + HISTORY -->
+    <div class="results-wrapper">
 
-    if (!list || !list.length) {
-      tbody.innerHTML = "";
-      metaEl.textContent = "No draws recorded yet.";
-      return;
+      <!-- LATEST DRAW -->
+      <div class="results-card" id="latestResultsCard">
+        <div class="results-header">
+          <h2>Latest draw results</h2>
+          <span id="latestMeta">Waiting for first draw…</span>
+        </div>
+
+        <div id="latestWinners">
+          <!-- Winner rows injected here -->
+        </div>
+      </div>
+
+      <!-- DRAW HISTORY -->
+      <div class="results-card">
+        <div class="results-header">
+          <h2>Draw history</h2>
+          <span id="historyMeta">No draws recorded yet.</span>
+        </div>
+
+        <div class="history-table-wrapper">
+          <table class="history-table" id="historyTable">
+            <thead>
+              <tr>
+                <th style="width: 14%;">Round</th>
+                <th style="width: 24%;">Executed (UTC)</th>
+                <th>Winners (1st / 2nd / 3rd)</th>
+              </tr>
+            </thead>
+            <tbody id="historyBody">
+              <!-- History rows injected here -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      This UI reads raffle state from Erebus backend via
+      <code>/api/get-state</code>. Draw cadence is fixed to 12 hours based
+      on the backend schedule anchor.
+    </div>
+  </div>
+
+  <script>
+  (() => {
+    "use strict";
+
+    const API_STATE_URL = "/api/get-state";
+    const DRAW_PERIOD_MS = 12 * 60 * 60 * 1000; // 12 hours
+
+    let nextDrawTimestamp = null;
+    let countdownInterval = null;
+    let draws = [];
+
+    function shortenAddress(addr) {
+      if (!addr || typeof addr !== "string") return addr || "";
+      if (addr.length <= 10) return addr;
+      return addr.slice(0, 6) + "..." + addr.slice(-4);
     }
 
-    metaEl.textContent = `Total rounds recorded: ${list.length}`;
-
-    const rowsHtml = [...list]
-      .reverse()
-      .map((d) => {
-        const winnersArr = Array.isArray(d.winners) ? d.winners : [];
-
-        const first = winnersArr.find((w) => w.rank === 1);
-        const second = winnersArr.find((w) => w.rank === 2);
-        const third = winnersArr.find((w) => w.rank === 3);
-
-        const fmt = (w) => (w && w.address ? shortenAddress(w.address) : "-");
-
-        return `
-          <tr>
-            <td class="history-round">#${d.round ?? "?"}</td>
-            <td>${formatUTC(d.executedAt)}</td>
-            <td class="history-winners">
-              1st: ${fmt(first)} |
-              2nd: ${fmt(second)} |
-              3rd: ${fmt(third)}
-            </td>
-          </tr>
-        `;
-      })
-      .join("");
-
-    tbody.innerHTML = rowsHtml;
-  }
-
-  function startCountdown() {
-    if (!nextDrawTimestamp) {
-      setText(
-        "drawStatus",
-        "No next draw scheduled yet. Waiting for backend timestamp..."
-      );
-      return;
+    function formatUTC(iso) {
+      if (!iso) return "-";
+      const d = new Date(iso);
+      if (Number.isNaN(d.getTime())) return iso;
+      return d.toUTCString();
     }
 
-    if (countdownInterval) {
-      clearInterval(countdownInterval);
-      countdownInterval = null;
+    function setText(id, text) {
+      const el = document.getElementById(id);
+      if (el) el.textContent = text;
     }
 
-    const tick = () => {
-      const now = Date.now();
-      const diff = nextDrawTimestamp - now;
+    function renderLatestDraw(list) {
+      const container = document.getElementById("latestWinners");
+      const metaEl = document.getElementById("latestMeta");
+      if (!container || !metaEl) return;
 
-      if (diff <= 0) {
-        setText("cd-hours", "00");
-        setText("cd-minutes", "00");
-        setText("cd-seconds", "00");
-        setText(
-          "drawStatus",
-          "Snapshot taken. Waiting for the backend to finalize the draw and publish the next round..."
-        );
-        clearInterval(countdownInterval);
-        countdownInterval = null;
+      if (!list || !list.length) {
+        container.innerHTML = "";
+        metaEl.textContent =
+          "No draws fired yet. First one hits when the timer reaches zero.";
         return;
       }
 
-      const totalSeconds = Math.floor(diff / 1000);
-      const hours = Math.floor(totalSeconds / 3600);
-      const minutes = Math.floor((totalSeconds % 3600) / 60);
-      const seconds = totalSeconds % 60;
+      const latest = list[list.length - 1] || {};
+      metaEl.textContent =
+        "Round #" +
+        (latest.round ?? list.length) +
+        " · " +
+        formatUTC(latest.executedAt);
 
-      setText("cd-hours", String(hours).padStart(2, "0"));
-      setText("cd-minutes", String(minutes).padStart(2, "0"));
-      setText("cd-seconds", String(seconds).padStart(2, "0"));
+      const winnersArr = Array.isArray(latest.winners) ? latest.winners : [];
 
-      if (hours === 0 && minutes < 10) {
-        setText(
-          "timerNote",
-          "We’re less than 10 minutes from the next raffle. Any last-minute shadow moves will be tracked."
-        );
-      } else {
-        setText(
-          "timerNote",
-          "This timer is global. Every wallet sees the same countdown and the same winners."
-        );
+      if (!winnersArr.length) {
+        container.innerHTML =
+          "<div>No winners recorded for this round yet.</div>";
+        return;
       }
-    };
 
-    tick();
-    countdownInterval = setInterval(tick, 1000);
-  }
+      const rowsHtml = winnersArr
+        .map((w) => {
+          const rank = w.rank ?? 0;
+          const icon = rank === 1 ? "👑" : rank === 2 ? "🥈" : "🥉";
+          const label =
+            rank === 1 ? "1st winner" : rank === 2 ? "2nd winner" : "3rd winner";
 
-  function applyStateFromServer(raw) {
-    console.log("Erebus state payload:", raw);
+          const tags = [];
+          if (w.tokenCount > 0) tags.push(`<span class="tag">Token x${w.tokenCount}</span>`);
+          if (w.idPassCount > 0) tags.push(`<span class="tag">ID Pass x${w.idPassCount}</span>`);
+          if (w.shadowsCount > 0) tags.push(`<span class="tag">Shadows x${w.shadowsCount}</span>`);
 
-    let payload = raw;
-    if (Array.isArray(raw)) payload = raw[0];
-    if (raw && raw.state) payload = raw.state;
+          const hasToken = w.tokenCount > 0;
+          const hasId = w.idPassCount > 0;
+          const hasShadow = w.shadowsCount > 0;
 
-    if (!payload) {
-      setText(
-        "drawStatus",
-        "Failed to sync raffle state (empty payload)."
-      );
-      return;
+          if (hasToken && (hasId || hasShadow)) {
+            const boosts = hasId && hasShadow ? "Full shadow boost" : "Dual boost";
+            tags.push(`<span class="tag tag-boost">${boosts}</span>`);
+          }
+
+          const addr = w.address || "-";
+
+          return `
+            <div class="winner-row">
+              <div class="winner-main">
+                <div class="winner-rank-pill">
+                  <span class="icon">${icon}</span>
+                  <span>${label}</span>
+                </div>
+                <div class="winner-addr" title="${addr}">
+                  ${shortenAddress(addr)}
+                  <button class="copy-btn" data-address="${addr}">Copy</button>
+                </div>
+              </div>
+              <div class="winner-tags">
+                ${tags.join("")}
+              </div>
+            </div>
+          `;
+        })
+        .join("");
+
+      container.innerHTML = rowsHtml;
     }
 
-    // ---- NEW GLOBAL TIMER LOGIC ----
-    // Use next_draw_at as base anchor, then advance in 12h steps.
-    const iso =
-      payload.next_draw_at ||
-      payload.nextDrawAt ||
-      payload.next_draw_at_utc ||
-      payload.next_draw_time;
+    function renderHistory(list) {
+      const tbody = document.getElementById("historyBody");
+      const metaEl = document.getElementById("historyMeta");
+      if (!tbody || !metaEl) return;
 
-    let ts = null;
-    if (iso) {
-      const baseTs = Date.parse(iso);
-      if (!Number.isNaN(baseTs)) {
-        const now = Date.now();
-        ts = baseTs;
-        // move forward in 12h increments until in the future
-        while (ts <= now) {
-          ts += DRAW_PERIOD_MS;
-        }
+      if (!list || !list.length) {
+        tbody.innerHTML = "";
+        metaEl.textContent = "No draws recorded yet.";
+        return;
+      }
 
+      metaEl.textContent = `Total rounds recorded: ${list.length}`;
+
+      const rowsHtml = [...list]
+        .reverse()
+        .map((d) => {
+          const winnersArr = Array.isArray(d.winners) ? d.winners : [];
+
+          const first = winnersArr.find((w) => w.rank === 1);
+          const second = winnersArr.find((w) => w.rank === 2);
+          const third = winnersArr.find((w) => w.rank === 3);
+
+          const fmt = (w) => (w && w.address ? shortenAddress(w.address) : "-");
+
+          return `
+            <tr>
+              <td class="history-round">#${d.round ?? "?"}</td>
+              <td>${formatUTC(d.executedAt)}</td>
+              <td class="history-winners">
+                1st: ${fmt(first)} |
+                2nd: ${fmt(second)} |
+                3rd: ${fmt(third)}
+              </td>
+            </tr>
+          `;
+        })
+        .join("");
+
+      tbody.innerHTML = rowsHtml;
+    }
+
+    function startCountdown() {
+      if (!nextDrawTimestamp) {
         setText(
           "drawStatus",
-          `Raffle state synced. Draws are every 12 hours from ${new Date(
-            baseTs
-          ).toUTCString()}.`
+          "No next draw scheduled yet. Waiting for backend timestamp..."
+        );
+        return;
+      }
+
+      if (countdownInterval) {
+        clearInterval(countdownInterval);
+        countdownInterval = null;
+      }
+
+      const tick = () => {
+        const now = Date.now();
+        const diff = nextDrawTimestamp - now;
+
+        if (diff <= 0) {
+          setText("cd-hours", "00");
+          setText("cd-minutes", "00");
+          setText("cd-seconds", "00");
+          setText(
+            "drawStatus",
+            "Snapshot taken. Waiting for the backend to finalize the draw and publish the next round..."
+          );
+          clearInterval(countdownInterval);
+          countdownInterval = null;
+          return;
+        }
+
+        const totalSeconds = Math.floor(diff / 1000);
+        const hours = Math.floor(totalSeconds / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const seconds = totalSeconds % 60;
+
+        setText("cd-hours", String(hours).padStart(2, "0"));
+        setText("cd-minutes", String(minutes).padStart(2, "0"));
+        setText("cd-seconds", String(seconds).padStart(2, "0"));
+
+        if (hours === 0 && minutes < 10) {
+          setText(
+            "timerNote",
+            "We’re less than 10 minutes from the next raffle. Any last-minute shadow moves will be tracked."
+          );
+        } else {
+          setText(
+            "timerNote",
+            "This timer is global. Every wallet sees the same countdown and the same winners."
+          );
+        }
+      };
+
+      tick();
+      countdownInterval = setInterval(tick, 1000);
+    }
+
+    function applyStateFromServer(raw) {
+      console.log("Erebus state payload:", raw);
+
+      let payload = raw;
+      if (Array.isArray(raw)) payload = raw[0];
+      if (raw && raw.state) payload = raw.state;
+
+      if (!payload) {
+        setText(
+          "drawStatus",
+          "Failed to sync raffle state (empty payload)."
+        );
+        return;
+      }
+
+      // Use backend anchor and advance by 12h steps until future
+      const iso =
+        payload.next_draw_at ||
+        payload.nextDrawAt ||
+        payload.next_draw_at_utc ||
+        payload.next_draw_time;
+
+      let ts = null;
+      if (iso) {
+        const baseTs = Date.parse(iso);
+        if (!Number.isNaN(baseTs)) {
+          const now = Date.now();
+          ts = baseTs;
+          while (ts <= now) {
+            ts += DRAW_PERIOD_MS;
+          }
+          setText(
+            "drawStatus",
+            `Raffle state synced. Draws are every 12 hours from ${new Date(
+              baseTs
+            ).toUTCString()}.`
+          );
+        }
+      }
+
+      // Fallback: if invalid/missing, start 12h from now
+      if (!ts) {
+        const now = Date.now();
+        ts = now + DRAW_PERIOD_MS;
+        setText(
+          "drawStatus",
+          "Backend timestamp invalid/missing. Using local 12-hour cycle from now."
+        );
+      }
+
+      nextDrawTimestamp = ts;
+
+      draws = payload.draws || payload.history || payload.winners_history || [];
+      renderLatestDraw(draws);
+      renderHistory(draws);
+
+      startCountdown();
+    }
+
+    async function fetchState() {
+      try {
+        setText("drawStatus", "Syncing with Erebus raffle oracle...");
+        const res = await fetch(API_STATE_URL, { cache: "no-store" });
+        if (!res.ok) {
+          throw new Error("HTTP " + res.status);
+        }
+        const data = await res.json();
+        applyStateFromServer(data);
+      } catch (err) {
+        console.error("Error fetching state:", err);
+        setText(
+          "drawStatus",
+          "Error fetching raffle state. Check console / network and refresh."
         );
       }
     }
 
-    // Fallback: if timestamp still missing/invalid, just start 12h from now
-    if (!ts) {
-      const now = Date.now();
-      ts = now + DRAW_PERIOD_MS;
-      setText(
-        "drawStatus",
-        "Backend timestamp invalid/missing. Using local 12-hour cycle from now."
-      );
+    function setupCopyButtons() {
+      document.addEventListener("click", (ev) => {
+        const btn = ev.target.closest(".copy-btn");
+        if (!btn) return;
+
+        const addr = btn.getAttribute("data-address");
+        if (!addr) return;
+
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard
+            .writeText(addr)
+            .then(() => {
+              btn.textContent = "Copied";
+              setTimeout(() => {
+                btn.textContent = "Copy";
+              }, 1200);
+            })
+            .catch(() => {
+              alert(
+                "Could not copy address. You can still select it manually."
+              );
+            });
+        } else {
+          alert(
+            "Clipboard API not available. Please select and copy manually."
+          );
+        }
+      });
     }
 
-    nextDrawTimestamp = ts;
-
-    // Winner history
-    draws = payload.draws || payload.history || [];
-    renderLatestDraw(draws);
-    renderHistory(draws);
-
-    startCountdown();
-  }
-
-  async function fetchState() {
-    try {
-      setText("drawStatus", "Syncing with Erebus raffle oracle...");
-      const res = await fetch(API_STATE_URL, { cache: "no-store" });
-      if (!res.ok) {
-        throw new Error("HTTP " + res.status);
-      }
-      const data = await res.json();
-      applyStateFromServer(data);
-    } catch (err) {
-      console.error("Error fetching state:", err);
-      setText(
-        "drawStatus",
-        "Error fetching raffle state. Check console / network and refresh."
-      );
-    }
-  }
-
-  function setupCopyButtons() {
-    document.addEventListener("click", (ev) => {
-      const btn = ev.target.closest(".copy-btn");
-      if (!btn) return;
-
-      const addr = btn.getAttribute("data-address");
-      if (!addr) return;
-
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard
-          .writeText(addr)
-          .then(() => {
-            btn.textContent = "Copied";
-            setTimeout(() => {
-              btn.textContent = "Copy";
-            }, 1200);
-          })
-          .catch(() => {
-            alert(
-              "Could not copy address. You can still select it manually."
-            );
-          });
-      } else {
-        alert(
-          "Clipboard API not available. Please select and copy manually."
-        );
-      }
+    window.addEventListener("DOMContentLoaded", () => {
+      setupCopyButtons();
+      fetchState();
+      // refresh every 5 minutes to keep history updated
+      setInterval(fetchState, 5 * 60 * 1000);
     });
-  }
-
-  window.addEventListener("DOMContentLoaded", () => {
-    setupCopyButtons();
-    fetchState();
-    // Refresh state every 5 min so long-open tabs get history updates
-    setInterval(fetchState, 5 * 60 * 1000);
-  });
-})();
-</script>
+  })();
+  </script>
+</body>
+</html>
