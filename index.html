@@ -596,7 +596,6 @@
     <div class="top-row">
       <div class="brand">
         <div class="brand-logo">
-          <!-- Make sure this file exists in your project root -->
           <img src="./erebus-logo.png" alt="Erebus crest" />
         </div>
         <div class="brand-title">
@@ -710,7 +709,6 @@
       <div class="art-card">
         <div class="art-card-inner">
           <div class="art-glow"></div>
-          <!-- Make sure this file exists in your project root -->
           <img src="./erebus-creature.png" alt="Erebus creature" />
         </div>
       </div>
@@ -757,22 +755,24 @@
 
     <div class="footer">
       This UI reads raffle state from Erebus backend via
-      <code>/api/get-state</code> and <code>/api/save-draw</code>.
+      <code>/api/get-state</code> and (optionally) <code>/api/save-draw</code>.
       For a fully trustless raffle, wire this interface to an Erebus smart contract with verifiable randomness.
     </div>
   </div>
 
   <script>
+    // ---------------- CONFIG ----------------
     const API_STATE_URL = "/api/get-state";
-    const API_DRAW_URL  = "/api/save-draw";
+    const TWELVE_HOURS_MS = 12 * 60 * 60 * 1000;
 
     let nextDrawTimestamp = null;
     let countdownInterval = null;
-    let drawInFlight = false;
-    let lastState = null;
+    let drawsCache = [];
 
+    // ---------------- UTIL HELPERS ----------------
     function shortenAddress(addr) {
-      if (!addr || addr.length < 10) return addr || "";
+      if (!addr || typeof addr !== "string") return addr || "";
+      if (addr.length <= 12) return addr;
       return addr.slice(0, 6) + "..." + addr.slice(-4);
     }
 
@@ -788,47 +788,54 @@
       if (el) el.textContent = text;
     }
 
-    // ---------- rendering ----------
-
-    function renderLatestDrawFromState(state) {
+    // ---------------- RENDER: LATEST DRAW ----------------
+    function renderLatestDraw(draws) {
       const container = document.getElementById("latestWinners");
       const metaEl = document.getElementById("latestMeta");
       if (!container || !metaEl) return;
 
-      if (!state) {
+      if (!Array.isArray(draws) || !draws.length) {
         container.innerHTML = "";
-        metaEl.textContent = "No raffle state yet.";
+        metaEl.textContent =
+          "No draws fired yet. First one hits when the timer reaches zero.";
         return;
       }
 
-      const winners = Array.isArray(state.winners) ? state.winners : [];
-      const round = state.round ?? state.id ?? "?";
-
-      metaEl.textContent = `Round #${round} · scheduled at ${formatUTC(
-        state.last_draw_at || state.executed_at || state.next_draw_at
+      const latest = draws[draws.length - 1];
+      metaEl.textContent = `Round #${latest.round ?? "?"} · ${formatUTC(
+        latest.executedAt
       )}`;
 
-      if (!winners.length) {
+      if (!Array.isArray(latest.winners) || !latest.winners.length) {
         container.innerHTML =
-          "<div>No winners recorded for this round yet.</div>";
+          "<div>No winners recorded for this round.</div>";
         return;
       }
 
-      const rowsHtml = winners
+      const rowsHtml = latest.winners
         .map((w) => {
-          const icon = w.rank === 1 ? "👑" : w.rank === 2 ? "🥈" : "🥉";
+          const rank = w.rank ?? 1;
+          const icon = rank === 1 ? "👑" : rank === 2 ? "🥈" : "🥉";
           const label =
-            w.rank === 1 ? "1st winner" : w.rank === 2 ? "2nd winner" : "3rd winner";
+            rank === 1 ? "1st winner" : rank === 2 ? "2nd winner" : "3rd winner";
           const shortAddr = shortenAddress(w.address);
 
           const tags = [];
-          if (w.tokenCount > 0) tags.push(`<span class="tag">Token x${w.tokenCount}</span>`);
-          if (w.idPassCount > 0) tags.push(`<span class="tag">ID Pass x${w.idPassCount}</span>`);
-          if (w.shadowsCount > 0) tags.push(`<span class="tag">Shadows x${w.shadowsCount}</span>`);
 
-          const hasToken = w.tokenCount > 0;
-          const hasId = w.idPassCount > 0;
-          const hasShadow = w.shadowsCount > 0;
+          if (w.tokenCount && w.tokenCount > 0) {
+            tags.push(`<span class="tag">Token x${w.tokenCount}</span>`);
+          }
+          if (w.idPassCount && w.idPassCount > 0) {
+            tags.push(`<span class="tag">ID Pass x${w.idPassCount}</span>`);
+          }
+          if (w.shadowsCount && w.shadowsCount > 0) {
+            tags.push(`<span class="tag">Shadows x${w.shadowsCount}</span>`);
+          }
+
+          const hasToken = w.tokenCount && w.tokenCount > 0;
+          const hasId = w.idPassCount && w.idPassCount > 0;
+          const hasShadow = w.shadowsCount && w.shadowsCount > 0;
+
           if (hasToken && (hasId || hasShadow)) {
             const boosts = hasId && hasShadow ? "Full shadow boost" : "Dual boost";
             tags.push(`<span class="tag tag-boost">${boosts}</span>`);
@@ -841,9 +848,11 @@
                   <span class="icon">${icon}</span>
                   <span>${label}</span>
                 </div>
-                <div class="winner-addr" title="${w.address}">
+                <div class="winner-addr" title="${w.address || ""}">
                   ${shortAddr}
-                  <button class="copy-btn" data-address="${w.address}">Copy</button>
+                  <button class="copy-btn" data-address="${w.address || ""}">
+                    Copy
+                  </button>
                 </div>
               </div>
               <div class="winner-tags">
@@ -857,13 +866,13 @@
       container.innerHTML = rowsHtml;
     }
 
-    function renderHistoryFromState(state) {
+    // ---------------- RENDER: HISTORY ----------------
+    function renderHistory(draws) {
       const tbody = document.getElementById("historyBody");
       const metaEl = document.getElementById("historyMeta");
       if (!tbody || !metaEl) return;
 
-      const draws = state && (state.draws || state.history);
-      if (!draws || !draws.length) {
+      if (!Array.isArray(draws) || !draws.length) {
         tbody.innerHTML = "";
         metaEl.textContent = "No draws recorded yet.";
         return;
@@ -878,16 +887,19 @@
           const second = d.winners?.find((w) => w.rank === 2);
           const third = d.winners?.find((w) => w.rank === 3);
 
-          const fmt = (w) => (w ? shortenAddress(w.address || "-") : "-");
+          function fmtWinner(w) {
+            if (!w) return "-";
+            return shortenAddress(w.address || "-");
+          }
 
           return `
             <tr>
-              <td class="history-round">#${d.round}</td>
-              <td>${formatUTC(d.executedAt || d.executed_at)}</td>
+              <td class="history-round">#${d.round ?? "?"}</td>
+              <td>${formatUTC(d.executedAt)}</td>
               <td class="history-winners">
-                1st: ${fmt(first)} |
-                2nd: ${fmt(second)} |
-                3rd: ${fmt(third)}
+                1st: ${fmtWinner(first)} |
+                2nd: ${fmtWinner(second)} |
+                3rd: ${fmtWinner(third)}
               </td>
             </tr>
           `;
@@ -897,49 +909,23 @@
       tbody.innerHTML = rowsHtml;
     }
 
-    // ---------- countdown ----------
-
-    function startCountdownFromState(state) {
-      const iso =
-        state.next_draw_at ||
-        state.nextDrawAt ||
-        state.next_draw_time;
-
-      if (!iso) {
-        setText(
-          "drawStatus",
-          "Raffle state loaded but next_draw_at is missing. Check backend."
-        );
+    // ---------------- COUNTDOWN ----------------
+    function startCountdown() {
+      if (!nextDrawTimestamp) {
+        console.warn("startCountdown called but nextDrawTimestamp is null");
         return;
       }
 
-      const ts = Date.parse(iso);
-      if (Number.isNaN(ts)) {
-        setText(
-          "drawStatus",
-          "Raffle state loaded but timestamp is invalid: " + iso
-        );
-        return;
+      if (countdownInterval) {
+        clearInterval(countdownInterval);
+        countdownInterval = null;
       }
 
-      nextDrawTimestamp = ts;
-
-      if (countdownInterval) clearInterval(countdownInterval);
-
-      function updateCountdown() {
+      function tick() {
         const now = Date.now();
-        const diff = nextDrawTimestamp - now;
+        let diff = nextDrawTimestamp - now;
 
-        if (diff <= 0) {
-          setText("cd-hours", "00");
-          setText("cd-minutes", "00");
-          setText("cd-seconds", "00");
-
-          if (!drawInFlight) {
-            triggerDraw();
-          }
-          return;
-        }
+        if (diff < 0) diff = 0;
 
         const totalSeconds = Math.floor(diff / 1000);
         const hours = Math.floor(totalSeconds / 3600);
@@ -949,6 +935,18 @@
         setText("cd-hours", String(hours).padStart(2, "0"));
         setText("cd-minutes", String(minutes).padStart(2, "0"));
         setText("cd-seconds", String(seconds).padStart(2, "0"));
+
+        if (diff === 0) {
+          setText(
+            "drawStatus",
+            "Countdown reached zero. Waiting for the Erebus backend to finalize or schedule the next draw…"
+          );
+          setText(
+            "timerNote",
+            "As soon as the backend updates next_draw_at, this page will sync and show the next 12-hour cycle."
+          );
+          return;
+        }
 
         if (hours === 0 && minutes < 10) {
           setText(
@@ -963,47 +961,103 @@
         }
       }
 
-      updateCountdown();
-      countdownInterval = setInterval(updateCountdown, 1000);
+      tick();
+      countdownInterval = setInterval(tick, 1000);
     }
 
-    // ---------- state handling ----------
+    // ---------------- STATE HANDLING ----------------
+    function normaliseDrawsFromPayload(payload) {
+      // If backend already returns an array of draw objects
+      if (Array.isArray(payload.draws)) return payload.draws;
+      if (Array.isArray(payload.history)) return payload.history;
+      if (Array.isArray(payload.rounds)) return payload.rounds;
+
+      // Simple Supabase row: one round + winners[]
+      if (Array.isArray(payload.winners)) {
+        return [
+          {
+            round: payload.round || 1,
+            executedAt: payload.executed_at || payload.next_draw_at || null,
+            winners: payload.winners,
+          },
+        ];
+      }
+
+      return [];
+    }
 
     function applyStateFromServer(raw) {
       console.log("Erebus state payload:", raw);
 
-      // Handle {…}, { state: {…} } or [ {…} ]
-      let state = raw;
-      if (raw && raw.state) state = raw.state;
-      if (Array.isArray(state)) state = state[0];
+      let payload = raw;
+      if (Array.isArray(raw) && raw.length) payload = raw[0];
+      if (raw && raw.state) payload = raw.state;
 
-      if (!state) {
-        setText("drawStatus", "Failed to sync raffle state (empty payload).");
+      if (!payload) {
+        setText(
+          "drawStatus",
+          "Failed to sync raffle state (empty payload from backend)."
+        );
         return;
       }
 
-      lastState = state;
+      const iso =
+        payload.next_draw_at ||
+        payload.nextDrawAt ||
+        payload.next_draw_time ||
+        payload.next_draw_at_utc;
 
-      renderLatestDrawFromState(state);
-      renderHistoryFromState(state);
-      startCountdownFromState(state);
+      if (!iso) {
+        setText(
+          "drawStatus",
+          "Raffle state loaded but next_draw_at is missing. Ask the backend to store it."
+        );
+        return;
+      }
 
-      const now = new Date();
+      let ts = Date.parse(iso);
+      if (!Number.isFinite(ts)) {
+        setText(
+          "drawStatus",
+          "Raffle state loaded but timestamp is invalid: " + iso
+        );
+        return;
+      }
+
+      const now = Date.now();
+
+      // If the stored next_draw_at is in the past,
+      // roll it forward in 12-hour steps so we always show a future draw.
+      while (ts <= now) {
+        ts += TWELVE_HOURS_MS;
+      }
+
+      nextDrawTimestamp = ts;
+
+      drawsCache = normaliseDrawsFromPayload(payload);
+      renderLatestDraw(drawsCache);
+      renderHistory(drawsCache);
+
+      const syncTime = new Date().toUTCString();
       setText(
         "drawStatus",
-        `Next shadow draw countdown is live. Last sync: ${now.toUTCString()}`
+        `Next shadow draw countdown is live. Last sync: ${syncTime}`
       );
+
+      startCountdown();
     }
 
     async function fetchState() {
       try {
-        setText("drawStatus", "Syncing with Erebus raffle oracle...");
+        setText("drawStatus", "Syncing with Erebus raffle oracle…");
+
         const res = await fetch(API_STATE_URL, { cache: "no-store" });
+        if (!res.ok) {
+          throw new Error("HTTP " + res.status);
+        }
 
-        if (!res.ok) throw new Error("HTTP " + res.status);
-
-        const raw = await res.json();
-        applyStateFromServer(raw);
+        const data = await res.json();
+        applyStateFromServer(data);
       } catch (err) {
         console.error("Error fetching state:", err);
         setText(
@@ -1013,39 +1067,7 @@
       }
     }
 
-    async function triggerDraw() {
-      if (drawInFlight) return;
-      drawInFlight = true;
-
-      setText(
-        "drawStatus",
-        "Timer hit zero. Freezing snapshot & running the draw on the server…"
-      );
-
-      try {
-        const res = await fetch(API_DRAW_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "runDraw" })
-        });
-
-        if (!res.ok) throw new Error("HTTP " + res.status);
-
-        const data = await res.json();
-        applyStateFromServer(data);
-      } catch (err) {
-        console.error("Error running draw:", err);
-        setText(
-          "drawStatus",
-          "Failed to run draw on the server. The backend will retry when available."
-        );
-      } finally {
-        drawInFlight = false;
-      }
-    }
-
-    // ---------- copy buttons ----------
-
+    // ---------------- COPY BUTTONS ----------------
     document.addEventListener("click", (ev) => {
       const btn = ev.target.closest(".copy-btn");
       if (!btn) return;
@@ -1063,20 +1085,21 @@
             }, 1200);
           })
           .catch(() => {
-            alert("Could not copy address. You can still select it manually.");
+            alert(
+              "Could not copy address. You can still select it manually."
+            );
           });
       } else {
-        alert("Clipboard API not available. Please select and copy manually.");
+        alert(
+          "Clipboard API not available. Please select and copy manually."
+        );
       }
     });
 
-    // ---------- init ----------
-
-    window.addEventListener("load", () => {
-      fetchState();
-      // keep in sync if tab stays open
-      setInterval(fetchState, 5 * 60 * 1000);
-    });
+    // ---------------- INIT ----------------
+    fetchState();
+    // Keep tab in sync if left open
+    setInterval(fetchState, 5 * 60 * 1000);
   </script>
 </body>
 </html>
