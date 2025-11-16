@@ -1,278 +1,63 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <title>Erebus: Raffle Under Maintenance</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <style>
-    :root {
-      --bg: #050509;
-      --card-bg: rgba(10, 10, 18, 0.95);
-      --accent: #8b5bff;
-      --accent-soft: rgba(139, 91, 255, 0.3);
-      --text-main: #f5f3ff;
-      --text-muted: #9b96c9;
-      --danger: #ff4d8a;
-    }
+// app/page.tsx or app/page.jsx
 
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
-    }
+import React from "react";
 
-    body {
-      min-height: 100vh;
-      background:
-        radial-gradient(circle at top, rgba(139, 91, 255, 0.18), transparent 55%),
-        radial-gradient(circle at bottom, rgba(0, 0, 0, 0.85), #020108);
-      color: var(--text-main);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 24px;
-    }
+export default function ErebusRaffleMaintenance() {
+  const pageStyle = {
+    minHeight: "100vh",
+    margin: 0,
+    padding: "24px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    background:
+      "radial-gradient(circle at top, rgba(139,91,255,0.18), transparent 55%), radial-gradient(circle at bottom, rgba(0,0,0,0.92), #020108)",
+    color: "#f5f3ff",
+    fontFamily:
+      'system-ui, -apple-system, BlinkMacSystemFont, "Inter", sans-serif',
+  } as const;
 
-    .wrapper {
-      max-width: 720px;
-      width: 100%;
-      background: linear-gradient(135deg, rgba(18, 16, 32, 0.96), rgba(4, 3, 12, 0.98));
-      border-radius: 24px;
-      padding: 28px 24px 24px;
-      border: 1px solid rgba(139, 91, 255, 0.35);
-      box-shadow:
-        0 0 40px rgba(0, 0, 0, 0.9),
-        0 0 60px rgba(139, 91, 255, 0.25);
-      position: relative;
-      overflow: hidden;
-    }
+  const cardStyle = {
+    maxWidth: "720px",
+    width: "100%",
+    padding: "28px 24px 22px",
+    borderRadius: "24px",
+    background:
+      "linear-gradient(135deg, rgba(18,16,32,0.96), rgba(4,3,12,0.98))",
+    border: "1px solid rgba(139,91,255,0.35)",
+    boxShadow:
+      "0 0 40px rgba(0,0,0,0.9), 0 0 60px rgba(139,91,255,0.25)",
+    position: "relative",
+    overflow: "hidden",
+  } as const;
 
-    .glow-ring {
-      position: absolute;
-      width: 420px;
-      height: 420px;
-      border-radius: 999px;
-      border: 1px solid var(--accent-soft);
-      opacity: 0.12;
-      top: -200px;
-      right: -180px;
-      filter: blur(1px);
-    }
+  const badgeStyle = {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "8px",
+    padding: "4px 10px 4px 5px",
+    borderRadius: "999px",
+    background: "rgba(10,8,20,0.9)",
+    border: "1px solid rgba(139,91,255,0.45)",
+    marginBottom: "16px",
+    position: "relative",
+    zIndex: 1,
+    fontSize: "11px",
+    letterSpacing: "0.12em",
+    textTransform: "uppercase",
+    color: "#9b96c9",
+  } as const;
 
-    .glow-orb {
-      position: absolute;
-      width: 220px;
-      height: 220px;
-      border-radius: 999px;
-      background: radial-gradient(circle, var(--accent) 0, transparent 65%);
-      opacity: 0.12;
-      bottom: -120px;
-      left: -80px;
-      filter: blur(4px);
-    }
+  const badgeDotStyle = {
+    width: "10px",
+    height: "10px",
+    borderRadius: "999px",
+    background: "#ff4d8a",
+    boxShadow: "0 0 10px rgba(255,77,138,0.9)",
+    position: "relative",
+  } as const;
 
-    .badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 4px 10px 4px 5px;
-      border-radius: 999px;
-      background: rgba(10, 8, 20, 0.9);
-      border: 1px solid rgba(139, 91, 255, 0.45);
-      margin-bottom: 16px;
-      position: relative;
-      z-index: 1;
-    }
-
-    .badge-dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 999px;
-      background: var(--danger);
-      box-shadow: 0 0 10px rgba(255, 77, 138, 0.9);
-      position: relative;
-    }
-
-    .badge-dot::after {
-      content: "";
-      position: absolute;
-      inset: -5px;
-      border-radius: inherit;
-      border: 1px solid rgba(255, 77, 138, 0.6);
-      opacity: 0.7;
-    }
-
-    .badge-text {
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.12em;
-      color: var(--text-muted);
-    }
-
-    h1 {
-      font-size: clamp(26px, 4vw, 32px);
-      margin-bottom: 8px;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
-      position: relative;
-      z-index: 1;
-    }
-
-    h1 span {
-      background: linear-gradient(120deg, #d7c8ff, #8b5bff);
-      -webkit-background-clip: text;
-      color: transparent;
-    }
-
-    .subtitle {
-      font-size: 14px;
-      color: var(--text-muted);
-      margin-bottom: 18px;
-      max-width: 560px;
-      position: relative;
-      z-index: 1;
-    }
-
-    .card {
-      margin-top: 10px;
-      padding: 16px 16px 14px;
-      border-radius: 18px;
-      background: radial-gradient(circle at top left, rgba(139, 91, 255, 0.18), rgba(6, 4, 18, 0.95));
-      border: 1px solid rgba(139, 91, 255, 0.4);
-      position: relative;
-      overflow: hidden;
-      z-index: 1;
-    }
-
-    .card-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 8px;
-    }
-
-    .card-title {
-      font-size: 14px;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: var(--text-muted);
-    }
-
-    .tag {
-      font-size: 11px;
-      padding: 3px 9px;
-      border-radius: 999px;
-      border: 1px solid rgba(213, 162, 255, 0.6);
-      background: rgba(8, 4, 22, 0.8);
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-    }
-
-    .card-main-text {
-      font-size: 15px;
-      line-height: 1.6;
-      color: var(--text-main);
-      margin-bottom: 8px;
-    }
-
-    .card-note {
-      font-size: 12px;
-      color: var(--text-muted);
-      line-height: 1.6;
-    }
-
-    .list {
-      margin: 16px 0 4px;
-      padding-left: 18px;
-      font-size: 13px;
-      color: var(--text-muted);
-      line-height: 1.7;
-    }
-
-    .list li {
-      margin-bottom: 6px;
-    }
-
-    .footer {
-      margin-top: 18px;
-      font-size: 11px;
-      color: var(--text-muted);
-      display: flex;
-      justify-content: space-between;
-      gap: 8px;
-      flex-wrap: wrap;
-      position: relative;
-      z-index: 1;
-    }
-
-    .footer span strong {
-      color: #d7c8ff;
-      font-weight: 500;
-    }
-
-    @media (max-width: 480px) {
-      .wrapper {
-        padding: 20px 16px 16px;
-        border-radius: 20px;
-      }
-
-      .card {
-        padding: 14px 12px 10px;
-      }
-
-      .footer {
-        flex-direction: column;
-        align-items: flex-start;
-      }
-    }
-  </style>
-</head>
-<body>
-  <div class="wrapper">
-    <div class="glow-ring"></div>
-    <div class="glow-orb"></div>
-
-    <div class="badge">
-      <div class="badge-dot"></div>
-      <div class="badge-text">Erebus: Draw Temporarily Paused</div>
-    </div>
-
-    <h1><span>Erebus Raffle Under Maintenance</span></h1>
-
-    <p class="subtitle">
-      The current on-chain tracker for selecting and displaying the top 3 winners did not behave as expected.
-      To protect holders and keep the draw fair, the raffle is temporarily paused while we switch to a more
-      reliable method.
-    </p>
-
-    <div class="card">
-      <div class="card-header">
-        <div class="card-title">What this means</div>
-        <div class="tag">⚠ Maintenance Mode</div>
-      </div>
-
-      <p class="card-main-text">
-        No new winners are being drawn right now. Your <strong>Erebus: Token</strong> holdings and entries
-        remain valid — we are simply replacing the current draw logic with a safer and clearer alternative.
-      </p>
-
-      <ul class="list">
-        <li>All existing Erebus: Token holders will stay eligible for the next raffle.</li>
-        <li>The updated draw mechanism and the new raffle date will be announced on our official channels.</li>
-        <li>If anything goes wrong with the next draw, we will compensate holders accordingly.</li>
-      </ul>
-
-      <p class="card-note">
-        We started Erebus without a coding background and have been building this from the ground up.
-        Fixing this properly & transparently matters more to us than rushing a broken draw.
-      </p>
-    </div>
-
-    <div class="footer">
-      <span>Official updates: <strong>@ErebusNFT</strong> on X</span>
-      <span>Thank you for your patience & support, <strong>Erebus fam</strong>.</span>
-    </div>
-  </div>
-</body>
-</html>
+  const titleStyle = {
+    fontSize: "clamp(26px, 4vw, 32px)",
+    marginBottom: "8px",
+    letterSpacing: "0.04em"
